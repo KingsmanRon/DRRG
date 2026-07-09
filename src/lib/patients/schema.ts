@@ -25,7 +25,14 @@ export const PatientInput = z
     phone: z
       .string()
       .trim()
-      .regex(/^\+?[0-9 ()]{7,20}$/, "Enter a valid mobile number."),
+      .regex(/^\+?[0-9 ()]{7,20}$/, "Enter a valid mobile number.")
+      .refine(
+        (value) => {
+          const digits = value.replace(/\D/g, "").length;
+          return digits >= 7 && digits <= 15;
+        },
+        "Enter a valid mobile number.",
+      ),
     email: optionalEmail,
     residential_address: z
       .string()

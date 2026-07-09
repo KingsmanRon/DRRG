@@ -62,6 +62,15 @@ export async function POST(request: NextRequest) {
     if (error.code === "23505" && text.includes("patients_unique_identity_idx")) {
       return NextResponse.json({ error: "A patient with this identity already exists." }, { status: 409 });
     }
+    if (error.code === "22023" && text.includes("soft_duplicate")) {
+      return NextResponse.json(
+        {
+          error: "Possible existing patients were found since this form was opened. Review the updated list before saving.",
+          code: "duplicate_review_required",
+        },
+        { status: 409 },
+      );
+    }
     return NextResponse.json({ error: "The patient could not be saved." }, { status: 500 });
   }
 

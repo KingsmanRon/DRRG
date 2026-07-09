@@ -97,6 +97,12 @@ a {
   font-weight: 600;
 }
 
+.accountArea {
+  display: inline-flex;
+  align-items: center;
+  gap: 16px;
+}
+
 .accountLabel {
   display: inline-flex;
   align-items: center;
