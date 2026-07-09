@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
     const surname = input.surname.trim().toLowerCase();
     const candidates = demoPatients
       .filter((patient) => patient.surname.toLowerCase() === surname || normalisePhone(patient.phone) === normalisePhone(input.phone))
-      .slice(0, 5)
+      .slice(0, 10)
       .map((patient) => ({
         ...patient,
         match_score: patient.surname.toLowerCase() === surname && patient.date_of_birth === input.date_of_birth ? 85 : 55,
@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
     p_surname: input.surname,
     p_date_of_birth: input.date_of_birth,
     p_phone: input.phone,
-    p_limit: 5,
+    p_limit: 10,
   });
 
   if (error) return NextResponse.json({ error: "Unable to check possible duplicates." }, { status: 500 });

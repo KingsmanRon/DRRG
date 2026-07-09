@@ -66,4 +66,9 @@ describe("PatientInput", () => {
   it("treats South African local and international mobile formats as the same number", () => {
     expect(normalisePhone("082 123 4567")).toBe(normalisePhone("+27 82 123 4567"));
   });
+
+  it("rejects a phone number with more digits than the database allows", () => {
+    const result = PatientInput.safeParse({ ...base, phone: "0821234567890123" });
+    expect(result.success).toBe(false);
+  });
 });

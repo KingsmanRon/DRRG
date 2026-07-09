@@ -105,7 +105,10 @@ export function PatientOnboardingForm() {
       }
     }
     if (step === 3) {
-      if (!/^\+?[0-9 ()]{7,20}$/.test(draft.phone.trim())) next.phone = "Enter a valid mobile number.";
+      const phoneDigits = draft.phone.replace(/\D/g, "").length;
+      if (!/^\+?[0-9 ()]{7,20}$/.test(draft.phone.trim()) || phoneDigits < 7 || phoneDigits > 15) {
+        next.phone = "Enter a valid mobile number.";
+      }
       if (draft.email && !/^\S+@\S+\.\S+$/.test(draft.email)) next.email = "Enter a valid email address.";
       if (draft.residential_address.trim().length < 3) next.residential_address = "Residential address is required.";
     }
@@ -195,7 +198,11 @@ export function PatientOnboardingForm() {
     setSubmitting(false);
 
     if (!response.ok) {
-      if (response.status === 409 && body.existing?.file_number) {
+      if (response.status === 409 && body.code === "duplicate_review_required") {
+        setDuplicatesReviewed(false);
+        await checkDuplicates();
+        setFormError(body.error ?? "Review the updated possible matches before saving.");
+      } else if (response.status === 409 && body.existing?.file_number) {
         setFormError(`This identity already belongs to patient file ${body.existing.file_number}.`);
       } else {
         setFormError(body.error ?? "The patient could not be saved. Review the form and try again.");
