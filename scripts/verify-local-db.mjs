@@ -96,6 +96,8 @@ const possibleMatches = await staff.rpc("find_possible_duplicates", {
 });
 assert.ifError(possibleMatches.error);
 assert.equal(possibleMatches.data?.length, 1, "Soft duplicate candidate was not found");
+assert.equal(possibleMatches.data[0].identity_last4, "9087", "Soft duplicate did not return the masked identity");
+assert.ok(!("identity_number" in possibleMatches.data[0]), "Soft duplicate leaked the full identity number");
 
 const phoneOnlyMatches = await staff.rpc("find_possible_duplicates", {
   p_first_names: "Completely Different",
@@ -143,6 +145,10 @@ const patientSearch = await staff.rpc("search_patients", {
 assert.ifError(patientSearch.error);
 assert.equal(patientSearch.data?.total_count, 2, "Search did not cover all matching patient records");
 assert.equal(patientSearch.data?.patients?.length, 1, "Search pagination limit was not applied");
+const searchRow = patientSearch.data.patients[0];
+assert.ok(!("identity_number" in searchRow), "Patient search leaked the full identity number");
+assert.ok("identity_last4" in searchRow, "Patient search did not return the masked identity");
+assert.equal(searchRow.possible_duplicate, true, "Patient search did not flag the reviewed patient as a possible duplicate");
 
 const literalWildcardSearch = await staff.rpc("search_patients", {
   p_query: "%",

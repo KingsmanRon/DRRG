@@ -214,7 +214,7 @@ returns table (
   date_of_birth date,
   phone text,
   identity_type public.patient_identity_type,
-  identity_number text,
+  identity_last4 text,
   status public.patient_status,
   match_score integer,
   match_reasons text[]
@@ -261,7 +261,7 @@ as $$
     c.date_of_birth,
     c.phone,
     c.identity_type,
-    c.identity_number,
+    right(c.identity_number, 4) as identity_last4,
     c.status,
     c.score,
     c.reasons
@@ -313,9 +313,15 @@ as $$
       p.surname,
       p.date_of_birth,
       p.identity_type,
-      p.identity_number,
+      right(p.identity_number, 4) as identity_last4,
       p.phone,
       p.status,
+      exists (
+        select 1
+        from public.duplicate_reviews dr
+        where dr.patient_id = p.id
+           or dr.candidate_patient_id = p.id
+      ) as possible_duplicate,
       p.created_at
     from matched p
     order by p.created_at desc

@@ -7,16 +7,15 @@ export type PatientListItem = {
   surname: string;
   date_of_birth: string;
   identity_type: string;
-  identity_number: string | null;
+  identity_last4: string | null;
   phone: string;
   status: string;
   possible_duplicate?: boolean;
 };
 
 function identityLabel(patient: PatientListItem): string {
-  if (patient.identity_type === "none" || !patient.identity_number) return "No identity document";
-  const visible = patient.identity_number.slice(-4);
-  return `${patient.identity_type === "sa_id" ? "SA ID" : "Document"} •••• ${visible}`;
+  if (patient.identity_type === "none" || !patient.identity_last4) return "No identity document";
+  return `${patient.identity_type === "sa_id" ? "SA ID" : "Document"} •••• ${patient.identity_last4}`;
 }
 
 export function PatientTable({

@@ -15,7 +15,7 @@ type Candidate = {
   surname: string;
   date_of_birth: string;
   phone: string;
-  identity_number: string | null;
+  identity_last4: string | null;
   match_score: number;
   match_reasons: string[];
 };
