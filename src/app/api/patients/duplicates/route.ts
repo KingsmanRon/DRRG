@@ -42,7 +42,13 @@ export async function POST(request: NextRequest) {
       .filter((patient) => patient.surname.toLowerCase() === surname || normalisePhone(patient.phone) === normalisePhone(input.phone))
       .slice(0, 10)
       .map((patient) => ({
-        ...patient,
+        id: patient.id,
+        file_number: patient.file_number,
+        first_names: patient.first_names,
+        surname: patient.surname,
+        date_of_birth: patient.date_of_birth,
+        phone: patient.phone,
+        identity_last4: patient.identity_number ? patient.identity_number.slice(-4) : null,
         match_score: patient.surname.toLowerCase() === surname && patient.date_of_birth === input.date_of_birth ? 85 : 55,
         match_reasons: ["same_surname", "same_date_of_birth"],
       }));

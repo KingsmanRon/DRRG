@@ -28,7 +28,18 @@ async function getPatients(query: string, page: number): Promise<PatientSearchRe
           .includes(term)
         || (phoneTerm.length > 0 && normalisePhone(patient.phone).includes(phoneTerm)));
     return {
-      patients: matches.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
+      patients: matches.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE).map((patient) => ({
+        id: patient.id,
+        file_number: patient.file_number,
+        first_names: patient.first_names,
+        surname: patient.surname,
+        date_of_birth: patient.date_of_birth,
+        identity_type: patient.identity_type,
+        identity_last4: patient.identity_number ? patient.identity_number.slice(-4) : null,
+        phone: patient.phone,
+        status: patient.status,
+        possible_duplicate: "possible_duplicate" in patient ? patient.possible_duplicate : false,
+      })),
       total_count: matches.length,
     };
   }
