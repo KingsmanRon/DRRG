@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { WarningIcon } from "./icons";
 
 type Side = {
@@ -32,15 +32,36 @@ function identityLabel(side: Side): string {
   return `${side.identity_type === "sa_id" ? "SA ID" : "Document"} •••• ${side.identity_last4}`;
 }
 
-function CompareRow({ label, a, b }: { label: string; a: string; b: string }) {
-  const differs = a.trim().toLowerCase() !== b.trim().toLowerCase();
-  return (
-    <tr className={differs ? undefined : "compareMatch"}>
-      <th scope="row">{label}</th>
-      <td>{a || "—"}</td>
-      <td>{b || "—"}</td>
-    </tr>
-  );
+function eq(a: string, b: string): boolean {
+  return a.trim().toLowerCase() === b.trim().toLowerCase();
+}
+
+// Per-cell highlight: matching (green), conflicting (amber), missing (grey).
+function cellClasses(a: string, b: string): [string, string] {
+  const am = a.trim() === "";
+  const bm = b.trim() === "";
+  if (am && bm) return ["dupMissing", "dupMissing"];
+  if (am) return ["dupMissing", ""];
+  if (bm) return ["", "dupMissing"];
+  return eq(a, b) ? ["dupMatch", "dupMatch"] : ["dupConflict", "dupConflict"];
+}
+
+function humanJoin(items: string[]): string {
+  if (items.length <= 1) return items.join("");
+  if (items.length === 2) return `${items[0]} and ${items[1]}`;
+  return `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`;
+}
+
+function matchSummary(a: Side, b: Side): string {
+  const fields: string[] = [];
+  if (eq(`${a.first_names} ${a.surname}`, `${b.first_names} ${b.surname}`)) fields.push("name");
+  if (eq(a.date_of_birth, b.date_of_birth)) fields.push("date of birth");
+  if (eq(identityLabel(a), identityLabel(b))) fields.push("identity");
+  if (eq(a.phone, b.phone)) fields.push("phone");
+  if (eq(a.residential_address, b.residential_address)) fields.push("address");
+  return fields.length
+    ? `Matching ${humanJoin(fields)}`
+    : "Matching details were found during registration";
 }
 
 export function DuplicateResolver({ reviews: initialReviews }: { reviews: DuplicateReview[] }) {
@@ -84,10 +105,11 @@ export function DuplicateResolver({ reviews: initialReviews }: { reviews: Duplic
     }
     setBusyId(review.review_id);
     setRowError(review.review_id, "");
+    const kept = side.id === review.patient.id ? review.candidate.file_number : review.patient.file_number;
     const response = await fetch(`/api/patients/${side.id}`, {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ reason: `Duplicate resolution: kept ${side.id === review.patient.id ? review.candidate.file_number : review.patient.file_number}` }),
+      body: JSON.stringify({ reason: `Duplicate resolution: kept ${kept}` }),
     });
     setBusyId(null);
     if (!response.ok) {
@@ -95,7 +117,6 @@ export function DuplicateResolver({ reviews: initialReviews }: { reviews: Duplic
       setRowError(review.review_id, body.error ?? "Could not delete this file.");
       return;
     }
-    // Drop every pending pair that referenced the deleted patient.
     setReviews((current) => current.filter((item) => item.patient.id !== side.id && item.candidate.id !== side.id));
     router.refresh();
   }
@@ -114,65 +135,79 @@ export function DuplicateResolver({ reviews: initialReviews }: { reviews: Duplic
         const { patient: a, candidate: b } = review;
         const isResolving = resolvingId === review.review_id;
         const busy = busyId === review.review_id;
+        const rows = [
+          { label: "Date of birth", a: a.date_of_birth, b: b.date_of_birth },
+          { label: "Identity", a: identityLabel(a), b: identityLabel(b) },
+          { label: "Phone", a: a.phone, b: b.phone },
+          { label: "Email", a: a.email ?? "", b: b.email ?? "" },
+          { label: "Address", a: a.residential_address, b: b.residential_address },
+        ];
+
         return (
-          <section className="duplicateReviewCard" key={review.review_id}>
-            <div className="duplicatePanelHeader"><WarningIcon />Possible duplicate</div>
-            <p className="candidateMeta reviewReason">Flagged at onboarding: {review.review_reason}</p>
-
-            <div className="compareTableWrap">
-              <table className="compareTable">
-                <thead>
-                  <tr>
-                    <th scope="col"><span className="srOnly">Field</span></th>
-                    <th scope="col"><Link className="rowLink mono" href={`/patients/${a.id}`}>{a.file_number}</Link></th>
-                    <th scope="col"><Link className="rowLink mono" href={`/patients/${b.id}`}>{b.file_number}</Link></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <CompareRow label="Name" a={`${a.first_names} ${a.surname}`} b={`${b.first_names} ${b.surname}`} />
-                  <CompareRow label="Date of birth" a={a.date_of_birth} b={b.date_of_birth} />
-                  <CompareRow label="Identity" a={identityLabel(a)} b={identityLabel(b)} />
-                  <CompareRow label="Phone" a={a.phone} b={b.phone} />
-                  <CompareRow label="Email" a={a.email ?? ""} b={b.email ?? ""} />
-                  <CompareRow label="Address" a={a.residential_address} b={b.residential_address} />
-                </tbody>
-              </table>
+          <section className="dupCard" key={review.review_id}>
+            <div className="dupBanner">
+              <WarningIcon size={18} />
+              <strong>Possible duplicate</strong>
+              <span className="dupBannerReason">· {matchSummary(a, b)}</span>
             </div>
 
-            {error[review.review_id] && <div className="formErrorBanner" role="alert">{error[review.review_id]}</div>}
-
-            <div className="duplicateReviewActions">
-              <div className="sideActions">
-                <Link className="button buttonSecondary buttonSmall" href={`/patients/${a.id}`}>Open {a.file_number}</Link>
-                <button type="button" className="button buttonDanger buttonSmall" disabled={busy} onClick={() => deleteSide(review, a)}>Delete {a.file_number}</button>
+            <div className="dupCompare">
+              <div className="dupCorner dupCornerHead" />
+              <div className="dupColHead">
+                <span className="dupFileBadge mono">{a.file_number}</span>
+                <span className="dupName">{a.first_names} {a.surname}</span>
               </div>
-              <div className="sideActions">
-                <Link className="button buttonSecondary buttonSmall" href={`/patients/${b.id}`}>Open {b.file_number}</Link>
-                <button type="button" className="button buttonDanger buttonSmall" disabled={busy} onClick={() => deleteSide(review, b)}>Delete {b.file_number}</button>
+              <div className="dupColHead dupColB">
+                <span className="dupFileBadge mono">{b.file_number}</span>
+                <span className="dupName">{b.first_names} {b.surname}</span>
+              </div>
+
+              {rows.map((row) => {
+                const [ca, cb] = cellClasses(row.a, row.b);
+                return (
+                  <Fragment key={row.label}>
+                    <div className="dupRowLabel">{row.label}</div>
+                    <div className={`dupCell ${ca}`}>{row.a || "—"}</div>
+                    <div className={`dupCell dupColB ${cb}`}>{row.b || "—"}</div>
+                  </Fragment>
+                );
+              })}
+
+              <div className="dupCorner" />
+              <div className="dupColActions">
+                <Link className="button buttonSecondary" href={`/patients/${a.id}`}>View record</Link>
+                <button type="button" className="button buttonDangerOutline buttonSmall" disabled={busy} onClick={() => deleteSide(review, a)}>Delete record</button>
+              </div>
+              <div className="dupColActions dupColB">
+                <Link className="button buttonSecondary" href={`/patients/${b.id}`}>View record</Link>
+                <button type="button" className="button buttonDangerOutline buttonSmall" disabled={busy} onClick={() => deleteSide(review, b)}>Delete record</button>
               </div>
             </div>
 
-            {!isResolving ? (
-              <button type="button" className="button buttonPrimary" disabled={busy} onClick={() => { setResolvingId(review.review_id); setRowError(review.review_id, ""); }}>
-                These are different people — keep both
-              </button>
-            ) : (
-              <div className="formGrid keepBothPanel">
-                <div className="formField fullWidth">
-                  <label htmlFor={`reason-${review.review_id}`}>Reason these are different patients <span className="required">*</span></label>
-                  <textarea
-                    id={`reason-${review.review_id}`}
-                    value={reason[review.review_id] ?? ""}
-                    onChange={(event) => setReason((current) => ({ ...current, [review.review_id]: event.target.value }))}
-                    placeholder="For example, siblings sharing a phone number, confirmed in person"
-                  />
+            <div className="dupFooter">
+              {error[review.review_id] && <div className="formErrorBanner" role="alert">{error[review.review_id]}</div>}
+              {!isResolving ? (
+                <button type="button" className="button buttonSecondary dupKeepBoth" disabled={busy} onClick={() => { setResolvingId(review.review_id); setRowError(review.review_id, ""); }}>
+                  Different patients — keep both
+                </button>
+              ) : (
+                <div className="keepBothPanel">
+                  <div className="formField">
+                    <label htmlFor={`reason-${review.review_id}`}>Reason these are different patients <span className="required">*</span></label>
+                    <textarea
+                      id={`reason-${review.review_id}`}
+                      value={reason[review.review_id] ?? ""}
+                      onChange={(event) => setReason((current) => ({ ...current, [review.review_id]: event.target.value }))}
+                      placeholder="For example, siblings sharing a phone number, confirmed in person"
+                    />
+                  </div>
+                  <div className="dangerActions">
+                    <button type="button" className="button buttonSecondary" disabled={busy} onClick={() => setResolvingId(null)}>Cancel</button>
+                    <button type="button" className="button buttonPrimary" disabled={busy} onClick={() => keepBoth(review)}>{busy ? "Saving" : "Confirm — keep both"}</button>
+                  </div>
                 </div>
-                <div className="dangerActions fullWidth">
-                  <button type="button" className="button buttonSecondary" disabled={busy} onClick={() => setResolvingId(null)}>Cancel</button>
-                  <button type="button" className="button buttonPrimary" disabled={busy} onClick={() => keepBoth(review)}>{busy ? "Saving" : "Confirm — not a duplicate"}</button>
-                </div>
-              </div>
-            )}
+              )}
+            </div>
           </section>
         );
       })}

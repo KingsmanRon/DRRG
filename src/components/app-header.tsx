@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { UserIcon } from "./icons";
+import { MainNav } from "./main-nav";
 import { SignOutButton } from "./sign-out-button";
 import logo from "../../public/logo.png";
 
@@ -11,10 +12,7 @@ export function AppHeader({ displayName }: { displayName: string }) {
         <Link className="brand" href="/patients" aria-label="Dr RG Makoane patients home">
           <Image className="brandLogo" src={logo} alt="Dr RG Makoane" priority />
         </Link>
-        <nav className="appNav" aria-label="Main">
-          <Link href="/patients">Patients</Link>
-          <Link href="/patients/duplicates">Possible duplicates</Link>
-        </nav>
+        <MainNav />
         <div className="accountArea">
           <div className="accountLabel">
             <span className="accountIcon"><UserIcon /></span>

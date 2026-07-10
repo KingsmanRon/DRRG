@@ -16,7 +16,11 @@ export default async function DuplicatesPage() {
       <div className="pageTitleRow">
         <div>
           <h1>Possible duplicates</h1>
-          <p>Compare each pair, then delete a file or keep both as different patients.</p>
+          <p>Compare each pair and decide whether to keep or remove a record.</p>
+          <div className="dupLegend" aria-hidden="true">
+            <span className="dupLegendItem"><span className="dupSwatch dupSwatchMatch" />Matching</span>
+            <span className="dupLegendItem"><span className="dupSwatch dupSwatchDiff" />Different or missing</span>
+          </div>
         </div>
         <Link className="button buttonSecondary" href="/patients">Back to patients</Link>
       </div>
