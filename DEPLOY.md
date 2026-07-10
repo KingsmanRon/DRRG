@@ -18,7 +18,11 @@ before the app will work.
 
 ## 2. Apply the migrations to the cloud database
 
-Both migrations in `supabase/migrations/` must be applied, in order:
+All migrations in `supabase/migrations/` must be applied, in order (as of
+2026-07-10 there are four; the two `20260710*` ones add the merge flow and
+weighted duplicate scoring). **Apply migrations before deploying new app
+code** — the old app works against the new schema, but not the other way
+round:
 
 ```bash
 supabase link --project-ref <your-project-ref>
@@ -66,8 +70,15 @@ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
 - Sign in with a staff account → lands on `/patients`.
 - Register a new patient (with and without a file number).
 - Open a patient → edit a field → save.
-- Trigger a duplicate (same surname + date of birth) → resolve it on **Possible
-  duplicates** (delete one, or keep both).
-- Permanently delete a test patient.
+- Trigger a duplicate (same name + date of birth) → it appears on **Possible
+  duplicates** as "Likely duplicate" with both records compared.
+- Merge the pair (keep one record) → the kept record shows the union of the
+  data, and searching the archived record's file number finds the kept one.
+- Open the archived record by its old URL → read-only "merged into" banner.
+- Flag another pair and choose **Different patients — keep both** → the pair
+  leaves the queue and stays resolved after a reload.
 
-If all six pass, the deployment matches local behaviour.
+(There is intentionally no way to delete a patient — records are retained
+per HPCSA guidance; merging archives the losing record.)
+
+If all of these pass, the deployment matches local behaviour.
