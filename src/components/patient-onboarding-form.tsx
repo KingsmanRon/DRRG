@@ -17,6 +17,7 @@ type Candidate = {
   phone: string;
   identity_last4: string | null;
   match_score: number;
+  match_tier?: string;
   match_reasons: string[];
 };
 
@@ -78,7 +79,7 @@ export function PatientOnboardingForm() {
       delete next[field];
       return next;
     });
-    if (["first_names", "surname", "date_of_birth", "identity_type", "identity_number", "identity_country", "phone"].includes(field)) {
+    if (["first_names", "surname", "date_of_birth", "identity_type", "identity_number", "identity_country", "phone", "email", "residential_address"].includes(field)) {
       setCandidates([]);
       setDuplicatesReviewed(false);
     }
@@ -141,6 +142,8 @@ export function PatientOnboardingForm() {
           identity_number: draft.identity_number,
           identity_country: draft.identity_country,
           phone: draft.phone,
+          email: draft.email,
+          residential_address: draft.residential_address,
         }),
       });
       const body = await response.json();
@@ -168,7 +171,9 @@ export function PatientOnboardingForm() {
       const canContinue = await checkDuplicates();
       if (!canContinue) return;
     }
-    if (step === 3 && candidates.length === 0) await checkDuplicates();
+    // Re-check after contact details: phone, email and address all contribute
+    // to the weighted match score.
+    if (step === 3) await checkDuplicates();
     setStep((current) => Math.min(4, current + 1));
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
@@ -422,7 +427,7 @@ function DuplicateCandidateList({ candidates }: { candidates: Candidate[] }) {
           <div className="candidateMeta">Born {candidate.date_of_birth}</div>
           <div className="candidateMeta">{candidate.phone}</div>
           <div>
-            <strong>{candidate.match_score >= 85 ? "High match" : "Possible match"}</strong>
+            <strong>{candidate.match_tier === "likely" ? "Likely duplicate" : "Possible duplicate"}</strong>
             <div className="candidateMeta">{formatMatchReasons(candidate.match_reasons)}</div>
           </div>
         </li>
@@ -432,10 +437,12 @@ function DuplicateCandidateList({ candidates }: { candidates: Candidate[] }) {
 }
 
 function formatMatchReasons(reasons: string[]): string {
+  // Legacy underscore keys are kept for demo mode; the live RPC returns plain
+  // field names ("name", "date of birth", "phone", "email", "address").
   const labels: Record<string, string> = {
     same_name: "same name",
     same_date_of_birth: "same date of birth",
     same_phone: "same mobile number",
   };
-  return reasons.map((reason) => labels[reason] ?? reason).join(", ");
+  return reasons.map((reason) => labels[reason] ?? `same ${reason}`).join(", ");
 }

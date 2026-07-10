@@ -31,7 +31,7 @@ export const demoPatients = [
     identity_number: "9006213456088",
     phone: "071 987 6543",
     status: "active",
-    possible_duplicate: true,
+    duplicate_tier: "possible" as const,
   },
   {
     id: "28bce2ce-aa30-4e2b-a7cd-a1a58533a85c",
