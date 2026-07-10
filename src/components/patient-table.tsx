@@ -63,8 +63,6 @@ export function PatientTable({
                   <td data-label="Status">
                     {patient.possible_duplicate ? (
                       <span className="warningStatus"><WarningIcon size={18} />Possible duplicate</span>
-                    ) : patient.identity_type === "none" ? (
-                      <span className="neutralStatus">No identity document</span>
                     ) : (
                       <span className="cashStatus">Cash patient</span>
                     )}
