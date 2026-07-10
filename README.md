@@ -28,12 +28,27 @@ South African mobile numbers are normalised so local `082...` and international 
 
 Residential address is stored for administration but is not used for duplicate matching. Address spelling changes frequently and several patients can legitimately share one address.
 
-## Local setup
+## Local setup (real database)
 
-1. Install Node.js 20.9 or later.
+The app runs end-to-end against a local Supabase stack. Docker Desktop must be running.
+
+1. Install Node.js 20.9 or later and start Docker Desktop.
 2. Run `npm install`.
-3. Copy `.env.example` to `.env.local` and add a dedicated DRRG Supabase project.
-4. Apply the migrations in `supabase/migrations`.
-5. Run `npm run dev`.
+3. Start Supabase: `npx supabase start`. Copy the printed `API URL`, `publishable key`
+   and `secret key`.
+4. Create `.env.local` (see `.env.example`) with:
+   - `NEXT_PUBLIC_SUPABASE_URL` / `SUPABASE_URL` = the API URL (e.g. `http://127.0.0.1:54321`)
+   - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` / `SUPABASE_PUBLISHABLE_KEY` = the publishable key
+   - `SUPABASE_SECRET_KEY` = the secret key (server-only; used by the seed/verify scripts)
+   - `DRRG_DEMO_MODE=false`
+5. Apply migrations and seed data: `npx supabase db reset`.
+6. Create a local staff login: `npm run seed:local:staff`
+   (defaults to `doctor@drrg.local` / `LocalTest123!`).
+7. Run `npm run dev` and sign in at `/login`.
 
-For local interface verification without a database, set `DRRG_DEMO_MODE=true`. This must never be enabled in production.
+Useful checks: `npm run verify:db` (exercises the onboarding/duplicate RPCs) and
+`npm run test` (unit tests). When hosting on Supabase Cloud later, point the same
+environment variables at the cloud project and apply the migrations there.
+
+The legacy `DRRG_DEMO_MODE=true` fake-data mode is deprecated and off by default; the
+app now uses the real database for all screens.

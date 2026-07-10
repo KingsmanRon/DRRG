@@ -21,6 +21,7 @@ type Candidate = {
 };
 
 type Draft = {
+  file_number: string;
   first_names: string;
   surname: string;
   date_of_birth: string;
@@ -37,6 +38,7 @@ type Draft = {
 };
 
 const initialDraft: Draft = {
+  file_number: "",
   first_names: "",
   surname: "",
   date_of_birth: "",
@@ -182,6 +184,7 @@ export function PatientOnboardingForm() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         ...draft,
+        file_number: draft.file_number.trim(),
         identity_country: ["passport", "foreign_document"].includes(draft.identity_type)
           ? draft.identity_country.toUpperCase()
           : "",
@@ -248,6 +251,12 @@ export function PatientOnboardingForm() {
           <section className="formPanel" aria-labelledby="personal-heading">
             <h2 className="formPanelHeader" id="personal-heading">Personal details</h2>
             <div className="formPanelBody formGrid">
+              <div className="formField fullWidth">
+                <label htmlFor="file_number">File number</label>
+                <input id="file_number" value={draft.file_number} onChange={(event) => update("file_number", event.target.value)} autoComplete="off" placeholder="Leave blank to auto-generate" />
+                <p className="fieldHelp">If the patient already has a clinic file number, enter it here. Otherwise leave blank and one will be assigned.</p>
+                <FieldError message={errors.file_number} />
+              </div>
               <div className="formField">
                 <label htmlFor="first_names">First names <span className="required">*</span></label>
                 <input id="first_names" value={draft.first_names} onChange={(event) => update("first_names", event.target.value)} autoComplete="given-name" />

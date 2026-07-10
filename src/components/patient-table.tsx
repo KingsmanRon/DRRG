@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { WarningIcon } from "./icons";
 
 export type PatientListItem = {
@@ -46,12 +47,15 @@ export function PatientTable({
                 <th>Identity</th>
                 <th>Phone</th>
                 <th>Status</th>
+                <th><span className="srOnly">Actions</span></th>
               </tr>
             </thead>
             <tbody>
               {patients.map((patient) => (
                 <tr key={patient.id} className={patient.possible_duplicate ? "duplicateRow" : undefined}>
-                  <td data-label="File number" className="mono">{patient.file_number}</td>
+                  <td data-label="File number" className="mono">
+                    <Link className="rowLink" href={`/patients/${patient.id}`}>{patient.file_number}</Link>
+                  </td>
                   <td data-label="Patient">{patient.first_names} {patient.surname}</td>
                   <td data-label="Date of birth">{patient.date_of_birth}</td>
                   <td data-label="Identity">{identityLabel(patient)}</td>
@@ -64,6 +68,9 @@ export function PatientTable({
                     ) : (
                       <span className="cashStatus">Cash patient</span>
                     )}
+                  </td>
+                  <td data-label="Actions" className="rowActions">
+                    <Link className="button buttonSecondary buttonSmall" href={`/patients/${patient.id}`}>Open</Link>
                   </td>
                 </tr>
               ))}

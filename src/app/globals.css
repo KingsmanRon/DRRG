@@ -85,21 +85,16 @@ a {
 }
 
 .brandLogo {
-  width: 48px;
-  height: 48px;
+  height: 42px;
+  width: auto;
   object-fit: contain;
   display: block;
 }
 
 .brandLogoLogin {
-  width: 72px;
-  height: 72px;
-  margin-bottom: 20px;
-}
-
-.brandName {
-  font-size: 17px;
-  font-weight: 600;
+  height: 56px;
+  width: auto;
+  margin-bottom: 22px;
 }
 
 .accountArea {
@@ -683,7 +678,6 @@ textarea:focus-visible {
     padding: 0 22px;
   }
 
-  .brandName,
   .accountLabel span:last-child {
     display: none;
   }
@@ -764,8 +758,8 @@ textarea:focus-visible {
   }
 
   .brandLogo {
-    width: 40px;
-    height: 40px;
+    height: 34px;
+    width: auto;
   }
 
   .accountIcon {
@@ -856,5 +850,203 @@ textarea:focus-visible {
   *::after {
     scroll-behavior: auto !important;
     transition-duration: 0.01ms !important;
+  }
+}
+
+/* Header navigation */
+.appNav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-right: auto;
+  margin-left: 12px;
+}
+
+.appNav a {
+  padding: 8px 14px;
+  border-radius: var(--radius);
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.appNav a:hover {
+  color: var(--green);
+  background: var(--sage);
+}
+
+/* Buttons: small + danger variants */
+.buttonSmall {
+  min-height: 38px;
+  padding: 0 14px;
+  font-size: 14px;
+}
+
+.buttonDanger {
+  color: #ffffff;
+  background: var(--danger);
+  border-color: var(--danger);
+}
+
+.buttonDanger:hover {
+  background: #8a2828;
+  border-color: #8a2828;
+}
+
+/* Table row links + actions */
+.rowLink {
+  color: var(--green);
+  font-weight: 650;
+  text-decoration: none;
+}
+
+.rowLink:hover {
+  text-decoration: underline;
+}
+
+.rowActions {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+/* Success banner (mirrors .formErrorBanner) */
+.formSuccessBanner {
+  margin-bottom: 20px;
+  padding: 18px 20px;
+  border-radius: var(--panel-radius);
+  color: var(--green);
+  background: var(--green-soft);
+  border: 1px solid #b6d8c6;
+}
+
+/* Danger zone on the edit page */
+.dangerZone {
+  margin-top: 26px;
+  padding: 22px;
+  border: 1px solid #e6b8b8;
+  border-radius: var(--panel-radius);
+  background: #fff8f8;
+}
+
+.dangerZoneHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+  color: var(--danger);
+  font-size: 15px;
+  font-weight: 750;
+}
+
+.dangerZone p {
+  color: #6d4b4b;
+  font-size: 14px;
+  margin-bottom: 16px;
+}
+
+.dangerActions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+/* Duplicate review queue */
+.duplicateReviewList {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.duplicateReviewCard {
+  padding: 0 0 22px;
+  border: 1px solid var(--amber-border);
+  border-radius: var(--panel-radius);
+  overflow: hidden;
+  background: #ffffff;
+}
+
+.duplicateReviewCard .duplicatePanelHeader {
+  margin-bottom: 0;
+}
+
+.reviewReason {
+  padding: 12px 20px 0;
+  font-size: 13px;
+}
+
+.compareTableWrap {
+  padding: 16px 20px;
+  overflow-x: auto;
+}
+
+.compareTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.compareTable th[scope="col"] {
+  text-align: left;
+  padding: 8px 12px;
+  border-bottom: 2px solid var(--border-strong);
+}
+
+.compareTable th[scope="row"] {
+  text-align: left;
+  padding: 9px 12px;
+  color: var(--muted);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.compareTable td {
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+
+.compareTable tr:last-child td,
+.compareTable tr:last-child th {
+  border-bottom: 0;
+}
+
+.compareTable .compareMatch td {
+  color: var(--muted);
+}
+
+.duplicateReviewActions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  padding: 0 20px 16px;
+}
+
+.sideActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.keepBothPanel,
+.duplicateReviewCard > .button {
+  margin: 0 20px;
+}
+
+.keepBothPanel {
+  padding-top: 6px;
+}
+
+@media (max-width: 720px) {
+  .appNav {
+    display: none;
+  }
+
+  .duplicateReviewActions {
+    grid-template-columns: 1fr;
   }
 }

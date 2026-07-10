@@ -35,6 +35,7 @@ export async function POST(request: NextRequest) {
 
   const { data, error } = await supabase.rpc("onboard_patient", {
     p_patient: {
+      file_number: input.file_number,
       first_names: input.first_names,
       surname: input.surname,
       date_of_birth: input.date_of_birth,
@@ -59,6 +60,9 @@ export async function POST(request: NextRequest) {
 
   if (error) {
     const text = `${error.message} ${error.details ?? ""}`.toLowerCase();
+    if (error.code === "23505" && text.includes("patients_file_number_key")) {
+      return NextResponse.json({ error: "That file number is already in use. Enter a different one or leave it blank to auto-generate." }, { status: 409 });
+    }
     if (error.code === "23505" && text.includes("patients_unique_identity_idx")) {
       return NextResponse.json({ error: "A patient with this identity already exists." }, { status: 409 });
     }
