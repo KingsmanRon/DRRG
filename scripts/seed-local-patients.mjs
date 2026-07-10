@@ -62,6 +62,8 @@ for (const p of patients) {
     p_date_of_birth: p.date_of_birth,
     p_phone: p.phone,
     p_limit: 10,
+    p_email: p.email ?? "",
+    p_address: p.residential_address,
   });
   assert.ifError(candidates.error);
   const candidateIds = (candidates.data ?? []).map((c) => c.id);

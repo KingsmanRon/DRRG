@@ -57,6 +57,12 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     if (error.code === "P0002") {
       return NextResponse.json({ error: "This patient no longer exists." }, { status: 404 });
     }
+    if (error.code === "55000") {
+      return NextResponse.json(
+        { error: "This record was merged into another patient file and is read only." },
+        { status: 409 },
+      );
+    }
     return NextResponse.json({ error: "The patient could not be updated." }, { status: 500 });
   }
 
@@ -64,27 +70,6 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   return NextResponse.json({ id: row?.patient_id ?? id, file_number: row?.file_number }, { status: 200 });
 }
 
-export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
-  if (!idSchema.safeParse(id).success) {
-    return NextResponse.json({ error: "Invalid patient reference." }, { status: 400 });
-  }
-
-  const body = await request.json().catch(() => ({}));
-  const reason = typeof body?.reason === "string" ? body.reason.slice(0, 500) : "";
-
-  const supabase = await createClient();
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) return NextResponse.json({ error: "Not authenticated." }, { status: 401 });
-
-  const { data, error } = await supabase.rpc("delete_patient", { p_id: id, p_reason: reason });
-
-  if (error) {
-    if (error.code === "P0002") {
-      return NextResponse.json({ error: "This patient no longer exists." }, { status: 404 });
-    }
-    return NextResponse.json({ error: "The patient could not be deleted." }, { status: 500 });
-  }
-
-  return NextResponse.json({ file_number: data }, { status: 200 });
-}
+// There is intentionally no DELETE handler: patient records are never hard
+// deleted (HPCSA retention). Duplicates are resolved by merging — see
+// /api/patients/duplicates/merge.

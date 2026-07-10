@@ -20,13 +20,22 @@ The system uses two levels of duplicate protection.
 1. A South African ID is a hard unique identifier. A matching ID cannot create another patient.
 2. A passport or foreign document is unique by document type, issuing country and normalised document number.
 3. Patients without an identity document can still be registered when staff record the reason.
-4. Name, date of birth and mobile number combinations produce possible match warnings.
-5. An exact mobile number also produces a warning because a returning patient may provide changed or mistyped personal details.
-6. Possible matches do not automatically block registration because relatives can share names, dates of birth or mobile numbers. Staff must review every match and record why a separate patient is being created.
+4. Soft matches use a weighted score: full name +3, date of birth +3, email +2,
+   mobile number +1, address +1. An identity-number match is decisive.
+5. Pairs are tiered: **Likely duplicate** (identity match, name + date of birth,
+   or score ≥ 6) and **Possible duplicate** (score 2–5). A single weak field
+   (phone alone, address alone) is not flagged; phone + address together is only
+   ever "Possible" because relatives share phones and addresses.
+6. Possible matches do not automatically block registration. Staff must review
+   every match and record why a separate patient is being created.
+7. Flagged pairs are resolved on the Possible duplicates page by **merging**
+   (one record survives, the other is archived — never deleted — and its file
+   number keeps finding the kept patient) or by **keep both**, which is
+   remembered and re-opened only if the matched details later change.
 
-South African mobile numbers are normalised so local `082...` and international `+27 82...` formats match one another.
+South African mobile numbers are normalised so local `082...` and international `+27 82...` formats match one another. Names and addresses are compared ignoring case, punctuation and accents.
 
-Residential address is stored for administration but is not used for duplicate matching. Address spelling changes frequently and several patients can legitimately share one address.
+Patient records are never hard deleted (HPCSA requires clinical records to be retained). Merging archives the losing record and keeps it queryable for audit.
 
 ## Local setup (real database)
 

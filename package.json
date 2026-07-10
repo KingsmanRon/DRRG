@@ -9,6 +9,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "verify:db": "node scripts/verify-local-db.mjs",
+    "verify:merge": "node scripts/verify-local-merge.mjs",
     "seed:local:staff": "node scripts/seed-local-staff.mjs",
     "seed:local:patients": "node scripts/seed-local-patients.mjs"
   },

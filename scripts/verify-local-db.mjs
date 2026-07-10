@@ -98,6 +98,7 @@ assert.ifError(possibleMatches.error);
 assert.equal(possibleMatches.data?.length, 1, "Soft duplicate candidate was not found");
 assert.equal(possibleMatches.data[0].identity_last4, "9087", "Soft duplicate did not return the masked identity");
 assert.ok(!("identity_number" in possibleMatches.data[0]), "Soft duplicate leaked the full identity number");
+assert.equal(possibleMatches.data[0].match_tier, "likely", "Name + date of birth (+ phone) should be a likely duplicate");
 
 const phoneOnlyMatches = await staff.rpc("find_possible_duplicates", {
   p_first_names: "Completely Different",
@@ -107,9 +108,22 @@ const phoneOnlyMatches = await staff.rpc("find_possible_duplicates", {
   p_limit: 5,
 });
 assert.ifError(phoneOnlyMatches.error);
-assert.equal(phoneOnlyMatches.data?.length, 1, "Exact phone duplicate candidate was not found");
-assert.equal(phoneOnlyMatches.data[0].match_score, 55);
-assert.deepEqual(phoneOnlyMatches.data[0].match_reasons, ["same_phone"]);
+assert.equal(phoneOnlyMatches.data?.length, 0, "A phone match alone should stay below the flagging threshold");
+
+const phoneAndAddressMatches = await staff.rpc("find_possible_duplicates", {
+  p_first_names: "Completely Different",
+  p_surname: "Patient",
+  p_date_of_birth: "1992-02-02",
+  p_phone: patient.phone,
+  p_limit: 5,
+  p_email: "",
+  p_address: patient.residential_address,
+});
+assert.ifError(phoneAndAddressMatches.error);
+assert.equal(phoneAndAddressMatches.data?.length, 1, "Phone + address should be flagged");
+assert.equal(phoneAndAddressMatches.data[0].match_score, 2);
+assert.equal(phoneAndAddressMatches.data[0].match_tier, "possible", "Phone + address alone must never be a likely duplicate");
+assert.deepEqual(phoneAndAddressMatches.data[0].match_reasons, ["phone", "address"]);
 
 const noIdentityPatient = {
   ...patient,
@@ -148,7 +162,7 @@ assert.equal(patientSearch.data?.patients?.length, 1, "Search pagination limit w
 const searchRow = patientSearch.data.patients[0];
 assert.ok(!("identity_number" in searchRow), "Patient search leaked the full identity number");
 assert.ok("identity_last4" in searchRow, "Patient search did not return the masked identity");
-assert.equal(searchRow.possible_duplicate, true, "Patient search did not flag the reviewed patient as a possible duplicate");
+assert.equal(searchRow.duplicate_tier, "likely", "Patient search did not tier the reviewed patient as a likely duplicate");
 
 const literalWildcardSearch = await staff.rpc("search_patients", {
   p_query: "%",

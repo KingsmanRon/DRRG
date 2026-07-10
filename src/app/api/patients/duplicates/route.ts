@@ -13,6 +13,8 @@ const DuplicateRequest = z.object({
   identity_number: z.string().trim().max(80).default(""),
   identity_country: z.string().trim().max(2).default(""),
   phone: z.string().trim().max(30).default(""),
+  email: z.string().trim().max(254).default(""),
+  residential_address: z.string().trim().max(500).default(""),
 });
 
 function normalizeIdentityNumber(type: string, number: string): string {
@@ -79,6 +81,8 @@ export async function POST(request: NextRequest) {
     p_date_of_birth: input.date_of_birth,
     p_phone: input.phone,
     p_limit: 10,
+    p_email: input.email,
+    p_address: input.residential_address,
   });
 
   if (error) return NextResponse.json({ error: "Unable to check possible duplicates." }, { status: 500 });
