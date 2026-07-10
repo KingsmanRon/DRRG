@@ -24,6 +24,11 @@ export type PatientRecord = {
   status: string;
 };
 
+export type DuplicateNotice = {
+  fileNumbers: string[];
+  reviewHref: string;
+};
+
 type Draft = {
   file_number: string;
   first_names: string;
@@ -58,18 +63,19 @@ function FieldError({ message }: { message?: string }) {
   return message ? <p className="fieldError">{message}</p> : null;
 }
 
-export function PatientEditForm({ patient }: { patient: PatientRecord }) {
+export function PatientEditForm({
+  patient,
+  duplicateNotice,
+}: {
+  patient: PatientRecord;
+  duplicateNotice?: DuplicateNotice | null;
+}) {
   const router = useRouter();
   const [draft, setDraft] = useState<Draft>(() => toDraft(patient));
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState("");
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
-
-  const [confirmingDelete, setConfirmingDelete] = useState(false);
-  const [deleteReason, setDeleteReason] = useState("");
-  const [deleting, setDeleting] = useState(false);
-  const [deleteError, setDeleteError] = useState("");
 
   function update<K extends keyof Draft>(field: K, value: Draft[K]) {
     setDraft((current) => ({ ...current, [field]: value }));
@@ -149,24 +155,6 @@ export function PatientEditForm({ patient }: { patient: PatientRecord }) {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  async function confirmDelete() {
-    setDeleting(true);
-    setDeleteError("");
-    const response = await fetch(`/api/patients/${patient.id}`, {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ reason: deleteReason.trim() }),
-    });
-    if (!response.ok) {
-      const body = await response.json().catch(() => ({}));
-      setDeleting(false);
-      setDeleteError(body.error ?? "The patient could not be deleted.");
-      return;
-    }
-    router.push("/patients");
-    router.refresh();
-  }
-
   return (
     <form onSubmit={save} noValidate>
       <main className="formShell">
@@ -178,6 +166,15 @@ export function PatientEditForm({ patient }: { patient: PatientRecord }) {
           <Link className="button buttonSecondary" href="/patients">Back to patients</Link>
         </div>
 
+        {duplicateNotice && (
+          <div className="duplicateNotice" role="status">
+            <WarningIcon size={18} />
+            <span>
+              This record is flagged as a possible duplicate of {duplicateNotice.fileNumbers.join(", ")}.{" "}
+              <Link className="rowLink" href={duplicateNotice.reviewHref}>Review the pair</Link>
+            </span>
+          </div>
+        )}
         {formError && <div className="formErrorBanner" role="alert">{formError}</div>}
         {saved && <div className="formSuccessBanner" role="status">Changes saved.</div>}
 
@@ -265,25 +262,8 @@ export function PatientEditForm({ patient }: { patient: PatientRecord }) {
           </div>
         </section>
 
-        <section className="dangerZone" aria-labelledby="danger-heading">
-          <div className="dangerZoneHeader" id="danger-heading"><WarningIcon />Permanently delete patient</div>
-          <p>This removes the patient file, consent record and history for good. This cannot be undone. Use it to clean up a genuine duplicate file.</p>
-          {deleteError && <div className="formErrorBanner" role="alert">{deleteError}</div>}
-          {!confirmingDelete ? (
-            <button type="button" className="button buttonDanger" onClick={() => setConfirmingDelete(true)}>Delete patient</button>
-          ) : (
-            <div className="formGrid">
-              <div className="formField fullWidth">
-                <label htmlFor="delete_reason">Reason for deleting (optional)</label>
-                <textarea id="delete_reason" value={deleteReason} onChange={(event) => setDeleteReason(event.target.value)} placeholder="For example, duplicate of DRRG00000123" />
-              </div>
-              <div className="dangerActions fullWidth">
-                <button type="button" className="button buttonSecondary" onClick={() => setConfirmingDelete(false)} disabled={deleting}>Cancel</button>
-                <button type="button" className="button buttonDanger" onClick={confirmDelete} disabled={deleting}>{deleting ? "Deleting" : "Yes, permanently delete"}</button>
-              </div>
-            </div>
-          )}
-        </section>
+        {/* Patient records are never hard deleted (HPCSA retention). A genuine
+            duplicate is cleaned up by merging it on the duplicates page. */}
       </main>
 
       <div className="formActions">
