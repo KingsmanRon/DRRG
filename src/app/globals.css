@@ -698,11 +698,10 @@ textarea:focus-visible {
   width: min(100%, 1210px);
   max-height: calc(100vh - 56px);
   max-height: calc(100dvh - 56px);
-  /* Slightly shorter shell = less portrait crop pressure on the landscape photo */
-  min-height: min(620px, calc(100vh - 56px));
+  /* Shorter + wider left column = cover crops less (true zoom-out, still edge-to-edge) */
+  min-height: min(580px, calc(100vh - 56px));
   display: grid;
-  /* Wider left column so more of the landscape image is visible */
-  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
   align-items: stretch;
   border-radius: 12px;
   overflow: hidden; /* image follows rounded corners */
@@ -727,9 +726,6 @@ textarea:focus-visible {
   object-position: center 55%;
   width: 100%;
   height: 100%;
-  /* Slight zoom-out: show a bit more of the scene while still filling the panel */
-  transform: scale(0.92);
-  transform-origin: center center;
 }
 
 /* Subtle green only as a transparent overlay on the photo (not solid bars) */
