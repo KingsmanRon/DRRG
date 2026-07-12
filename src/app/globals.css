@@ -692,7 +692,7 @@ textarea:focus-visible {
 }
 
 .loginPanel {
-  width: min(100%, 430px);
+  width: min(100%, 480px);
   padding: 36px;
   background: #ffffff;
   border: 1px solid var(--border);
@@ -702,7 +702,7 @@ textarea:focus-visible {
 }
 
 .loginPanel h1 {
-  margin-bottom: 8px;
+  margin: 28px 0 8px;
   font-size: 2rem;
 }
 
@@ -718,6 +718,132 @@ textarea:focus-visible {
 .loginPanel .button {
   width: 100%;
   margin-top: 24px;
+}
+
+/* Practice letterhead (login) + staff footer */
+.practiceLetterhead {
+  margin: 0 0 8px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--border);
+  text-align: center;
+}
+
+.practiceName {
+  margin: 0 0 8px;
+  font-size: 1.15rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: var(--green);
+}
+
+.practiceDoctor {
+  margin: 0 0 6px;
+  font-size: 14px;
+  font-weight: 650;
+  line-height: 1.4;
+  color: var(--text);
+}
+
+.practiceQuals {
+  font-weight: 500;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.practiceMeta {
+  margin: 0 0 12px;
+  font-size: 12px;
+  font-weight: 650;
+  color: var(--muted);
+}
+
+.practiceDot {
+  margin: 0 0.4em;
+  color: var(--border-strong);
+}
+
+.practiceContactList {
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.practiceContactList a,
+.practiceContacts a,
+.practiceFooter a {
+  color: var(--green);
+  text-decoration: none;
+  font-weight: 650;
+}
+
+.practiceContactList a:hover,
+.practiceContacts a:hover,
+.practiceFooter a:hover {
+  text-decoration: underline;
+}
+
+.practiceLabel {
+  display: inline-block;
+  min-width: 7.5rem;
+  margin-right: 6px;
+  color: var(--muted);
+  font-weight: 600;
+  text-align: right;
+}
+
+.practiceAddress {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.staffChrome {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.staffMain {
+  flex: 1 1 auto;
+}
+
+.practiceFooter {
+  margin-top: auto;
+  border-top: 1px solid var(--border);
+  background: var(--surface-subtle);
+}
+
+.practiceFooterInner {
+  width: min(100% - 48px, 1360px);
+  margin: 0 auto;
+  padding: 18px 0 22px;
+  text-align: center;
+}
+
+.practiceFooter .practiceName {
+  font-size: 0.95rem;
+  margin-bottom: 4px;
+}
+
+.practiceFooter .practiceDoctor,
+.practiceFooter .practiceMeta,
+.practiceFooter .practiceContacts,
+.practiceFooter .practiceAddress {
+  margin: 0 0 4px;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.practiceFooter .practiceContacts {
+  color: var(--muted);
+}
+
+.practiceFooter .practiceQuals {
+  font-size: 12px;
 }
 
 @media (max-width: 900px) {
@@ -1623,5 +1749,27 @@ textarea:focus-visible {
 
   .dangerZoneInner {
     padding: 14px;
+  }
+
+  .practiceLabel {
+    display: block;
+    min-width: 0;
+    margin: 0 0 2px;
+    text-align: center;
+  }
+
+  .practiceFooterInner {
+    width: min(100% - 32px, 1360px);
+  }
+
+  .practiceFooter .practiceContacts {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    align-items: center;
+  }
+
+  .practiceFooter .practiceDot {
+    display: none;
   }
 }
