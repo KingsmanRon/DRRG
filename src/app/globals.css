@@ -723,7 +723,8 @@ textarea:focus-visible {
 
 .loginImage {
   object-fit: cover;
-  object-position: 50% 52%;
+  /* Portrait 3:4 asset — centre crop; nudge second value if subject needs shifting */
+  object-position: center center;
   width: 100%;
   height: 100%;
 }
