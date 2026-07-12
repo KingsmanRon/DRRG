@@ -686,19 +686,50 @@ textarea:focus-visible {
 .loginPage {
   min-height: 100vh;
   display: grid;
-  place-items: center;
-  padding: 24px;
-  background: var(--surface-subtle);
+  grid-template-columns: minmax(0, 1.15fr) minmax(320px, 520px);
+  background: #ffffff;
+}
+
+.loginHero {
+  position: relative;
+  min-height: 100vh;
+  overflow: hidden;
+  background: #0a3d2c;
+}
+
+.loginHeroImage {
+  object-fit: cover;
+  object-position: center;
+}
+
+.loginHeroScrim {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    105deg,
+    rgba(3, 40, 28, 0.18) 0%,
+    rgba(3, 40, 28, 0.08) 45%,
+    rgba(255, 255, 255, 0.12) 100%
+  );
+  pointer-events: none;
 }
 
 .loginPanel {
-  width: min(100%, 480px);
-  padding: 36px;
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  min-height: 100vh;
+  max-height: 100vh;
+  overflow: auto;
+  padding: 40px 36px 48px;
   background: #ffffff;
-  border: 1px solid var(--border);
-  border-top: 4px solid var(--green);
-  border-radius: var(--panel-radius);
-  box-shadow: var(--shadow);
+  border: none;
+  border-left: 1px solid var(--border);
+  border-radius: 0;
+  box-shadow: none;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
 .loginPanel h1 {
@@ -718,6 +749,10 @@ textarea:focus-visible {
 .loginPanel .button {
   width: 100%;
   margin-top: 24px;
+}
+
+.loginPanel .brandLogoLogin {
+  align-self: center;
 }
 
 /* Practice letterhead (login) + staff footer */
@@ -1680,6 +1715,42 @@ textarea:focus-visible {
 
 .dupMobileFieldLabel {
   display: none;
+}
+
+@media (max-width: 900px) {
+  .loginPage {
+    grid-template-columns: 1fr;
+    place-items: center;
+    padding: 28px 18px;
+    background: #0a3d2c;
+  }
+
+  .loginHero {
+    position: fixed;
+    inset: 0;
+    min-height: 100%;
+    z-index: 0;
+  }
+
+  .loginHeroScrim {
+    background: linear-gradient(
+      180deg,
+      rgba(3, 40, 28, 0.55) 0%,
+      rgba(3, 40, 28, 0.72) 100%
+    );
+  }
+
+  .loginPanel {
+    min-height: auto;
+    max-height: none;
+    width: min(100%, 480px);
+    padding: 28px 24px 32px;
+    border: 1px solid var(--border);
+    border-top: 4px solid var(--green);
+    border-radius: var(--panel-radius);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
+    justify-content: flex-start;
+  }
 }
 
 @media (max-width: 720px) {

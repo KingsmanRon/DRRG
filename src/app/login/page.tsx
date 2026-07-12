@@ -2,6 +2,7 @@ import Image from "next/image";
 import { LoginForm } from "@/components/login-form";
 import { PracticeLetterhead } from "@/components/practice-letterhead";
 import logo from "../../../public/logo.png";
+import frontImage from "../../../public/frontimage.png";
 
 export default async function LoginPage({
   searchParams,
@@ -13,8 +14,21 @@ export default async function LoginPage({
 
   return (
     <main className="loginPage">
+      <div className="loginHero" aria-hidden="true">
+        <Image
+          className="loginHeroImage"
+          src={frontImage}
+          alt=""
+          fill
+          priority
+          sizes="(max-width: 900px) 100vw, 55vw"
+          placeholder="blur"
+        />
+        <div className="loginHeroScrim" />
+      </div>
+
       <section className="loginPanel">
-        <Image className="brandLogo brandLogoLogin" src={logo} alt="Dr RG Makoane" priority />
+        <Image className="brandLogo brandLogoLogin" src={logo} alt="DRG Makoane" priority />
         <PracticeLetterhead variant="full" />
 
         <h1>Sign in</h1>
