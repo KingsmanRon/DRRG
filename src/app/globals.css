@@ -832,13 +832,13 @@ textarea:focus-visible {
 .practiceFooter {
   margin-top: auto;
   border-top: 1px solid var(--border);
-  background: var(--surface-subtle);
+  background: #ffffff;
 }
 
 .practiceFooterInner {
   width: min(100% - 48px, 1360px);
   margin: 0 auto;
-  padding: 18px 0 22px;
+  padding: 20px 0 24px;
   text-align: center;
 }
 
@@ -846,14 +846,14 @@ textarea:focus-visible {
   display: block;
   height: 40px;
   width: auto;
-  margin: 0 auto 10px;
+  margin: 0 auto 8px;
   object-fit: contain;
 }
 
-.practiceFooter .practiceDoctor,
 .practiceFooter .practiceMeta,
 .practiceFooter .practiceContacts,
-.practiceFooter .practiceAddress {
+.practiceFooter .practiceAddress,
+.practiceFooter .practiceFooterQuals {
   margin: 0 0 4px;
   font-size: 12px;
   line-height: 1.4;
@@ -863,8 +863,9 @@ textarea:focus-visible {
   color: var(--muted);
 }
 
-.practiceFooter .practiceQuals {
-  font-size: 12px;
+.practiceFooter .practiceFooterQuals {
+  font-weight: 500;
+  color: var(--muted);
 }
 
 @media (max-width: 900px) {
