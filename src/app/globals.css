@@ -726,14 +726,12 @@ textarea:focus-visible {
 
 .loginImage {
   /*
-   * Zoom out: "cover" crops hard on a tall panel.
-   * Use a larger source frame with cover + scale so more of the scene is visible
-   * without empty grey bars (panel is brand green behind).
+   * Zoom out: show the full landscape photo.
+   * Panel background is brand green so any letterbox edges match the practice colour
+   * (not empty grey). Wider left column above also reduces unused bands.
    */
-  object-fit: cover;
+  object-fit: contain;
   object-position: center center;
-  transform: scale(0.78);
-  transform-origin: center center;
   image-rendering: auto;
 }
 
