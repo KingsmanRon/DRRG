@@ -15,6 +15,7 @@ export default async function LoginPage({
   return (
     <main className="loginPage">
       <div className="loginShell">
+        {/* Desktop only: large photographic left panel */}
         <aside className="loginImagePanel" aria-hidden="true">
           <Image
             className="loginImage"
@@ -22,12 +23,17 @@ export default async function LoginPage({
             alt=""
             fill
             priority
-            sizes="(max-width: 900px) 100vw, 520px"
+            sizes="520px"
           />
           <div className="loginImageOverlay" />
         </aside>
 
         <section className="loginPanel">
+          {/* Compact brand bar for tablet/mobile (image panel is hidden) */}
+          <header className="loginMobileBrand">
+            <Image className="loginMobileBrandLogo" src={logo} alt="DRG Makoane" priority />
+          </header>
+
           <div className="loginPanelBrand">
             <Image className="loginPanelLogo" src={logo} alt="DRG Makoane" priority />
             <PracticeLetterhead variant="full" />
