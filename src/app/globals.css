@@ -695,6 +695,7 @@ textarea:focus-visible {
 }
 
 .loginShell {
+  position: relative;
   width: min(100%, 1210px);
   max-height: calc(100vh - 56px);
   max-height: calc(100dvh - 56px);
@@ -706,15 +707,38 @@ textarea:focus-visible {
   overflow: hidden;
   background: #ffffff;
   border: 1px solid var(--border);
-  border-top: 4px solid var(--green);
   box-shadow: 0 10px 32px rgba(20, 42, 32, 0.08);
+}
+
+/* Soft multi-shade green “cap” that fades into the card (replaces a hard green bar) */
+.loginShell::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 72px;
+  z-index: 5;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    #022a1e 0%,
+    #033d29 12%,
+    #064f36 28%,
+    rgba(6, 79, 54, 0.55) 48%,
+    rgba(10, 107, 72, 0.22) 68%,
+    rgba(6, 79, 54, 0.06) 86%,
+    transparent 100%
+  );
 }
 
 .loginImagePanel {
   position: relative;
   min-height: 100%;
   min-width: 0;
-  background: #043525;
+  /* Letterbox colour when image uses contain — deep green, not flat black */
+  background:
+    radial-gradient(ellipse 90% 70% at 50% 55%, #0a5c42 0%, #043525 52%, #021f16 100%);
 }
 
 .loginImage {
@@ -728,13 +752,25 @@ textarea:focus-visible {
   position: absolute;
   inset: 0;
   z-index: 1;
-  background: linear-gradient(
-    180deg,
-    rgba(4, 53, 37, 0.22) 0%,
-    rgba(4, 53, 37, 0.08) 50%,
-    rgba(4, 53, 37, 0.24) 100%
-  );
   pointer-events: none;
+  /* Layered greens: strong at top (meets shell fade), open mid, soft base */
+  background:
+    linear-gradient(
+      180deg,
+      rgba(2, 42, 30, 0.72) 0%,
+      rgba(3, 61, 41, 0.42) 16%,
+      rgba(6, 79, 54, 0.18) 36%,
+      rgba(6, 79, 54, 0.04) 55%,
+      rgba(4, 53, 37, 0.14) 78%,
+      rgba(2, 42, 30, 0.38) 100%
+    ),
+    linear-gradient(
+      90deg,
+      rgba(2, 42, 30, 0.28) 0%,
+      transparent 18%,
+      transparent 82%,
+      rgba(2, 42, 30, 0.28) 100%
+    );
 }
 
 /* Compact brand strip — shown only on tablet/mobile when image panel is hidden */
@@ -1900,8 +1936,14 @@ textarea:focus-visible {
     margin: -36px -24px 20px;
     padding: 18px 24px 16px;
     border-bottom: 1px solid var(--border);
-    background: linear-gradient(180deg, var(--green-soft) 0%, #ffffff 100%);
-    /* Shell already has green top line; keep a soft brand cue here without a second bar */
+    background: linear-gradient(
+      180deg,
+      #033d29 0%,
+      #064f36 18%,
+      rgba(6, 79, 54, 0.35) 42%,
+      var(--green-soft) 72%,
+      #ffffff 100%
+    );
   }
 
   .loginMobileBrandLogo {
