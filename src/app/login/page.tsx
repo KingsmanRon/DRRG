@@ -23,7 +23,9 @@ export default async function LoginPage({
             alt=""
             fill
             priority
-            sizes="520px"
+            quality={90}
+            // Panel is ~500–560 CSS px wide; request 2x for sharp retina cover crop.
+            sizes="(max-width: 900px) 1px, min(56vw, 900px)"
           />
           <div className="loginImageOverlay" />
         </aside>

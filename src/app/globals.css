@@ -698,9 +698,10 @@ textarea:focus-visible {
   width: min(100%, 1210px);
   max-height: calc(100vh - 56px);
   max-height: calc(100dvh - 56px);
-  min-height: min(700px, calc(100vh - 56px));
+  min-height: min(680px, calc(100vh - 56px));
   display: grid;
-  grid-template-columns: 42% 58%;
+  /* Slightly wider image column so landscape photo is less aggressively cropped */
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
   border-radius: 12px;
   overflow: hidden;
   background: #ffffff;
@@ -711,24 +712,28 @@ textarea:focus-visible {
 .loginImagePanel {
   position: relative;
   min-height: 100%;
+  min-width: 0;
   background: #043525;
 }
 
 .loginImage {
   object-fit: cover;
-  /* Keep stethoscope / desk in frame */
-  object-position: 38% 58%;
+  /* Show more of the scene; bias slightly toward the desk/stethoscope */
+  object-position: center 42%;
+  /* Prefer crisp resampling */
+  image-rendering: auto;
 }
 
 .loginImageOverlay {
   position: absolute;
   inset: 0;
   z-index: 1;
+  /* Lighter scrim so photo detail stays visible */
   background: linear-gradient(
     180deg,
-    rgba(4, 53, 37, 0.42) 0%,
-    rgba(4, 53, 37, 0.22) 50%,
-    rgba(4, 53, 37, 0.38) 100%
+    rgba(4, 53, 37, 0.28) 0%,
+    rgba(4, 53, 37, 0.12) 45%,
+    rgba(4, 53, 37, 0.3) 100%
   );
   pointer-events: none;
 }
