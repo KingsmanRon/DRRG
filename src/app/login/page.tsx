@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { ShieldLockIcon } from "@/components/icons";
 import { LoginForm } from "@/components/login-form";
 import { PracticeLetterhead } from "@/components/practice-letterhead";
 import logo from "../../../public/logo.png";
@@ -44,6 +45,12 @@ export default async function LoginPage({
               </div>
             )}
             <LoginForm />
+            <p className="loginSecureNote">
+              <span className="loginSecureIcon" aria-hidden="true">
+                <ShieldLockIcon size={15} />
+              </span>
+              Secure access for authorised staff only
+            </p>
           </div>
         </section>
       </div>

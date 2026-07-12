@@ -98,3 +98,18 @@ export function IdBadgeIcon({ size = 18, className }: IconProps) {
     </svg>
   );
 }
+
+export function ShieldLockIcon({ size = 16, className }: IconProps) {
+  return (
+    <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M12 3.5 5.5 6.2v5.1c0 4.2 2.7 7.4 6.5 9.2 3.8-1.8 6.5-5 6.5-9.2V6.2L12 3.5Z"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinejoin="round"
+      />
+      <rect x="9.2" y="10.2" width="5.6" height="4.4" rx="1" stroke="currentColor" strokeWidth="1.5" />
+      <path d="M10.4 10.2V9a1.6 1.6 0 0 1 3.2 0v1.2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
+  );
+}
