@@ -727,6 +727,9 @@ textarea:focus-visible {
   object-position: center 55%;
   width: 100%;
   height: 100%;
+  /* Slight zoom-out: show a bit more of the scene while still filling the panel */
+  transform: scale(0.92);
+  transform-origin: center center;
 }
 
 /* Subtle green only as a transparent overlay on the photo (not solid bars) */
