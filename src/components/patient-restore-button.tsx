@@ -40,8 +40,8 @@ export function PatientRestoreButton({
   return (
     <div className="archiveConfirmPanel">
       <p>
-        Restore <strong className="mono">{fileNumber}</strong> to the active patient list?
-        Staff will be able to search and edit this file again.
+        Put <strong className="mono">{fileNumber}</strong> back on the active patient list?
+        Reception will be able to find and edit this file again.
       </p>
       {error && <div className="formErrorBanner" role="alert">{error}</div>}
       <div className="dangerActions">

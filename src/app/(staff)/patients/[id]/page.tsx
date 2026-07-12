@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PatientAuditTrail } from "@/components/patient-audit-trail";
+import { PatientDetailTabs } from "@/components/patient-detail-tabs";
 import { PatientEditForm, type DuplicateNotice, type PatientRecord } from "@/components/patient-edit-form";
 import { PatientRestoreButton } from "@/components/patient-restore-button";
 import { WarningIcon } from "@/components/icons";
@@ -29,7 +30,6 @@ async function loadAuditTrail(patientId: string) {
     .order("created_at", { ascending: false })
     .limit(40);
 
-  // RLS: only doctors can read audit_events; staff get an empty list / error.
   if (error || !events) return [];
 
   const actorIds = Array.from(new Set(events.map((event) => event.actor_user_id)));
@@ -65,10 +65,9 @@ export default async function PatientDetailPage({
 
   if (error || !data) notFound();
   const patient = data as PatientRow;
-  const auditEvents = staff.role === "doctor" ? await loadAuditTrail(id) : [];
+  const isDoctor = staff.role === "doctor";
+  const auditEvents = isDoctor ? await loadAuditTrail(id) : [];
 
-  // Archived records are read only. Merged archives point at the survivor;
-  // manually archived files can be restored by a doctor.
   if (patient.status === "archived") {
     let survivor: { id: string; file_number: string } | null = null;
     if (patient.merged_into) {
@@ -79,26 +78,26 @@ export default async function PatientDetailPage({
         .maybeSingle();
       survivor = survivorRow ?? null;
     }
-    const canRestore = !patient.merged_into && staff.role === "doctor";
+    const canRestore = !patient.merged_into && isDoctor;
 
-    return (
-      <main className="pageShell">
+    const archivedDetails = (
+      <>
         <div className="archivedBanner" role="status">
           <WarningIcon size={18} />
           <span>
             {survivor ? (
               <>
-                This record was merged into{" "}
+                This file was merged into{" "}
                 <Link className="rowLink" href={`/patients/${survivor.id}`}>{survivor.file_number}</Link>
-                {patient.archived_at ? ` on ${formatDate(patient.archived_at)}` : ""} and is read only.
+                {patient.archived_at ? ` on ${formatDate(patient.archived_at)}` : ""}. It is read only.
               </>
             ) : (
               <>
-                This record was archived{patient.archived_at ? ` on ${formatDate(patient.archived_at)}` : ""} and
-                is not on the active register.
-                {staff.role === "doctor"
-                  ? " A doctor can restore it if it was archived in error."
-                  : " Ask a doctor if it should be restored."}
+                This file was archived{patient.archived_at ? ` on ${formatDate(patient.archived_at)}` : ""} and
+                is off the active register.
+                {isDoctor
+                  ? " You can restore it if it was archived by mistake."
+                  : " Ask a doctor if it should be put back on the register."}
               </>
             )}
           </span>
@@ -106,27 +105,36 @@ export default async function PatientDetailPage({
 
         <div className="formTitleRow">
           <div>
-            <h1>{patient.first_names} {patient.surname}</h1>
-            <p className="mono muted">{patient.file_number} · Archived</p>
+            <h1>
+              {patient.first_names} {patient.surname}
+            </h1>
+            <p className="mono muted">
+              {patient.file_number} · {survivor ? "Merged" : "Archived"}
+            </p>
           </div>
           <div className="archivedActions">
             {survivor ? (
               <Link className="button buttonPrimary" href={`/patients/${survivor.id}`}>
-                Open kept record {survivor.file_number}
+                Open kept file {survivor.file_number}
               </Link>
             ) : canRestore ? (
               <PatientRestoreButton patientId={patient.id} fileNumber={patient.file_number} />
             ) : (
-              <Link className="button buttonSecondary" href="/patients">Back to patients</Link>
+              <Link className="button buttonSecondary" href="/patients">
+                Back to patients
+              </Link>
             )}
           </div>
         </div>
 
         <section className="formPanel">
-          <h2 className="formPanelHeader">Archived details (read only)</h2>
+          <h2 className="formPanelHeader">File details (read only)</h2>
           <div className="formPanelBody">
             <dl className="archivedDetails">
-              <div><dt>Date of birth</dt><dd>{patient.date_of_birth}</dd></div>
+              <div>
+                <dt>Date of birth</dt>
+                <dd>{patient.date_of_birth}</dd>
+              </div>
               <div>
                 <dt>Identity</dt>
                 <dd>
@@ -135,19 +143,35 @@ export default async function PatientDetailPage({
                     : `${patient.identity_type === "sa_id" ? "SA ID" : "Document"} •••• ${patient.identity_number.slice(-4)}`}
                 </dd>
               </div>
-              <div><dt>Phone</dt><dd>{patient.phone}</dd></div>
-              <div><dt>Email</dt><dd>{patient.email ?? "—"}</dd></div>
-              <div><dt>Address</dt><dd>{patient.residential_address}</dd></div>
+              <div>
+                <dt>Phone</dt>
+                <dd>{patient.phone}</dd>
+              </div>
+              <div>
+                <dt>Email</dt>
+                <dd>{patient.email ?? "—"}</dd>
+              </div>
+              <div>
+                <dt>Address</dt>
+                <dd>{patient.residential_address}</dd>
+              </div>
             </dl>
           </div>
         </section>
+      </>
+    );
 
-        {staff.role === "doctor" && <PatientAuditTrail events={auditEvents} />}
+    return (
+      <main className="pageShell">
+        <PatientDetailTabs
+          showHistory={isDoctor}
+          details={archivedDetails}
+          history={<PatientAuditTrail events={auditEvents} embedded />}
+        />
       </main>
     );
   }
 
-  // Non-blocking notice when this record is part of an unresolved pair.
   const { data: flaggedRows } = await supabase
     .from("duplicate_reviews")
     .select("patient_id, candidate_patient_id")
@@ -177,13 +201,14 @@ export default async function PatientDetailPage({
   }
 
   return (
-    <>
-      <PatientEditForm patient={patient} duplicateNotice={duplicateNotice} />
-      {staff.role === "doctor" && (
+    <PatientDetailTabs
+      showHistory={isDoctor}
+      details={<PatientEditForm patient={patient} duplicateNotice={duplicateNotice} />}
+      history={
         <div className="pageShell auditTrailWrap">
-          <PatientAuditTrail events={auditEvents} />
+          <PatientAuditTrail events={auditEvents} embedded />
         </div>
-      )}
-    </>
+      }
+    />
   );
 }

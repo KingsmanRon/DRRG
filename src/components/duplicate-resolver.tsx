@@ -203,10 +203,22 @@ export function DuplicateResolver({
     return (
       <>
         <p className="dupCount" role="status">
-          {resolvedMessage ? `${resolvedMessage} ` : ""}No pairs left to review.
+          {resolvedMessage ? `${resolvedMessage} ` : ""}
         </p>
         <section className="patientListSection">
-          <p className="emptyState">No possible duplicates need review right now.</p>
+          <div className="emptyStatePanel">
+            <p className="emptyState">
+              {resolvedMessage
+                ? "All open pairs are cleared for now."
+                : "No possible duplicates need review right now."}
+            </p>
+            <p className="muted emptyStateHint">
+              Pairs appear here when two files look alike (same name and date of birth, shared phone, and so on).
+            </p>
+            <Link className="button buttonSecondary" href="/patients">
+              Back to patients
+            </Link>
+          </div>
         </section>
       </>
     );
@@ -264,10 +276,12 @@ export function DuplicateResolver({
               <div className="dupCompare">
                 <div className="dupCorner dupCornerHead" />
                 <div className="dupColHead">
+                  <span className="dupSideLabel">File A</span>
                   <span className="dupFileBadge mono">{a.file_number}</span>
                   <span className="dupName">{a.first_names} {a.surname}</span>
                 </div>
                 <div className="dupColHead dupColB">
+                  <span className="dupSideLabel">File B</span>
                   <span className="dupFileBadge mono">{b.file_number}</span>
                   <span className="dupName">{b.first_names} {b.surname}</span>
                 </div>
@@ -281,15 +295,21 @@ export function DuplicateResolver({
                         {row.label}
                         <RowStateTag state={row.state} />
                       </div>
-                      <div className={`dupCell ${cellClass(row.state, "a", aEmpty, bEmpty)}`}>{row.a || "—"}</div>
-                      <div className={`dupCell dupColB ${cellClass(row.state, "b", aEmpty, bEmpty)}`}>{row.b || "—"}</div>
+                      <div className={`dupCell ${cellClass(row.state, "a", aEmpty, bEmpty)}`}>
+                        <span className="dupMobileFieldLabel">{row.label} · A</span>
+                        {row.a || "—"}
+                      </div>
+                      <div className={`dupCell dupColB ${cellClass(row.state, "b", aEmpty, bEmpty)}`}>
+                        <span className="dupMobileFieldLabel">{row.label} · B</span>
+                        {row.b || "—"}
+                      </div>
                     </Fragment>
                   );
                 })}
 
                 <div className="dupCorner" />
                 <div className="dupColActions">
-                  <Link className="button buttonSecondary" href={`/patients/${a.id}`}>View record</Link>
+                  <Link className="button buttonSecondary" href={`/patients/${a.id}`}>View file A</Link>
                   <button
                     type="button"
                     className="button buttonSecondary buttonSmall"
@@ -300,11 +320,11 @@ export function DuplicateResolver({
                       setMergePlan({ reviewId: review.review_id, plan: planMerge(a, b, review.identity_match) });
                     }}
                   >
-                    Merge — keep this record
+                    Merge — keep file A
                   </button>
                 </div>
                 <div className="dupColActions dupColB">
-                  <Link className="button buttonSecondary" href={`/patients/${b.id}`}>View record</Link>
+                  <Link className="button buttonSecondary" href={`/patients/${b.id}`}>View file B</Link>
                   <button
                     type="button"
                     className="button buttonSecondary buttonSmall"
@@ -315,7 +335,7 @@ export function DuplicateResolver({
                       setMergePlan({ reviewId: review.review_id, plan: planMerge(b, a, review.identity_match) });
                     }}
                   >
-                    Merge — keep this record
+                    Merge — keep file B
                   </button>
                 </div>
               </div>
@@ -364,22 +384,24 @@ export function DuplicateResolver({
                     disabled={busy}
                     onClick={() => { setKeepBothId(review.review_id); setRowError(review.review_id, ""); }}
                   >
-                    Different patients — keep both
+                    Not the same person — keep both files
                   </button>
                 ) : (
                   <div className="keepBothPanel">
                     <div className="formField">
-                      <label htmlFor={`reason-${review.review_id}`}>Reason these are different patients <span className="required">*</span></label>
+                      <label htmlFor={`reason-${review.review_id}`}>
+                        Why are these different people? <span className="required">*</span>
+                      </label>
                       <textarea
                         id={`reason-${review.review_id}`}
                         value={reason[review.review_id] ?? ""}
                         onChange={(event) => setReason((current) => ({ ...current, [review.review_id]: event.target.value }))}
-                        placeholder="For example, siblings sharing a phone number, confirmed in person"
+                        placeholder="e.g. Siblings sharing a phone, confirmed at reception"
                       />
                     </div>
                     <div className="dangerActions">
                       <button type="button" className="button buttonSecondary" disabled={busy} onClick={() => setKeepBothId(null)}>Cancel</button>
-                      <button type="button" className="button buttonPrimary" disabled={busy} onClick={() => keepBoth(review)}>{busy ? "Saving" : "Confirm — keep both"}</button>
+                      <button type="button" className="button buttonPrimary" disabled={busy} onClick={() => keepBoth(review)}>{busy ? "Saving" : "Confirm — keep both files"}</button>
                     </div>
                   </div>
                 )}

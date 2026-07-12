@@ -16,23 +16,22 @@ function formatWhen(value: string): string {
   });
 }
 
-export function PatientAuditTrail({ events }: { events: AuditEvent[] }) {
-  if (events.length === 0) {
-    return (
-      <section className="formPanel auditTrail">
-        <h2 className="formPanelHeader">Activity history</h2>
-        <div className="formPanelBody">
-          <p className="muted">No audit events recorded for this file yet.</p>
-        </div>
-      </section>
-    );
-  }
-
-  return (
-    <section className="formPanel auditTrail">
-      <h2 className="formPanelHeader">Activity history</h2>
-      <div className="formPanelBody">
-        <p className="fieldHelp">Visible to doctors only. Shows who created, updated, merged, or reviewed this file.</p>
+export function PatientAuditTrail({
+  events,
+  embedded = false,
+}: {
+  events: AuditEvent[];
+  /** When true, omit the outer panel chrome (used inside History tab). */
+  embedded?: boolean;
+}) {
+  const body = (
+    <>
+      <p className="fieldHelp auditTrailHelp">
+        Who registered, updated, merged, archived, or restored this file.
+      </p>
+      {events.length === 0 ? (
+        <p className="muted">No activity recorded on this file yet.</p>
+      ) : (
         <ol className="auditList">
           {events.map((event) => (
             <li key={event.id} className="auditItem">
@@ -44,7 +43,18 @@ export function PatientAuditTrail({ events }: { events: AuditEvent[] }) {
             </li>
           ))}
         </ol>
-      </div>
+      )}
+    </>
+  );
+
+  if (embedded) {
+    return <div className="auditTrail embeddedAudit">{body}</div>;
+  }
+
+  return (
+    <section className="formPanel auditTrail auditTrailSecondary">
+      <h2 className="formPanelHeader">Activity history</h2>
+      <div className="formPanelBody">{body}</div>
     </section>
   );
 }

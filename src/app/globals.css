@@ -1310,12 +1310,133 @@ textarea:focus-visible {
   font-weight: 600;
 }
 
-.dangerZone .formPanelHeader {
-  color: var(--danger);
+.pageSubtitle {
+  margin: 0;
+  color: var(--muted);
+  font-size: 15px;
+}
+
+.searchBlock {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 28px;
+}
+
+.scopeFilters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.scopeChip {
+  min-height: 36px;
+  padding: 0 14px;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.scopeChip:hover {
+  border-color: var(--green);
+  color: var(--green);
+}
+
+.scopeChipActive {
+  color: #fff;
+  background: var(--green);
+  border-color: var(--green);
+}
+
+.scopeChipActive:hover {
+  color: #fff;
+  background: var(--green-dark);
+  border-color: var(--green-dark);
+}
+
+.emptyStatePanel {
+  padding: 28px 20px;
+  text-align: center;
+  display: grid;
+  gap: 12px;
+  justify-items: center;
+}
+
+.emptyStatePanel .emptyState {
+  margin: 0;
+  max-width: 36rem;
+}
+
+.emptyStateHint {
+  margin: 0;
+  max-width: 36rem;
+  font-size: 14px;
+}
+
+.archiveStatus {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #50575c;
+  background: #eef0f1;
+  border: 1px solid #d1d6d9;
+}
+
+.archiveStatusMerged {
+  color: #5c4a00;
+  background: var(--amber-soft);
+  border-color: var(--amber-border);
+}
+
+.archivedRow td {
+  color: #4a5157;
+}
+
+.formPrimary {
+  display: grid;
+  gap: 0;
+}
+
+.dangerZone {
+  margin-top: 28px;
+  padding-top: 20px;
+  border-top: 1px dashed var(--border-strong);
+}
+
+.dangerZoneInner {
+  display: grid;
+  gap: 14px;
+  padding: 16px 18px;
+  border-radius: var(--panel-radius);
+  background: #fafafa;
+  border: 1px solid var(--border);
+}
+
+.dangerZoneTitle {
+  margin: 0 0 6px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--muted);
+  letter-spacing: 0;
+}
+
+.dangerZoneHelp {
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+  max-width: 40rem;
+  line-height: 1.45;
 }
 
 .archiveConfirmPanel {
-  margin-top: 12px;
+  margin-top: 4px;
   padding: 16px 18px;
   border: 1px solid #e5b4b4;
   border-radius: var(--panel-radius);
@@ -1349,6 +1470,70 @@ textarea:focus-visible {
   justify-content: flex-end;
 }
 
+.patientTabs {
+  width: 100%;
+}
+
+.patientTabList {
+  display: flex;
+  gap: 4px;
+  margin: 0 auto 20px;
+  max-width: 720px;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-subtle);
+}
+
+.patientTab {
+  flex: 1;
+  min-height: 40px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.patientTabActive {
+  color: var(--green);
+  background: #fff;
+  box-shadow: var(--shadow);
+}
+
+.patientHistoryPanel {
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.embeddedAudit {
+  padding: 8px 4px 24px;
+}
+
+.auditTrailHelp {
+  margin-top: 0;
+  margin-bottom: 16px;
+}
+
+.auditTrailSecondary {
+  opacity: 0.98;
+}
+
+.dupSideLabel {
+  display: none;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+.dupMobileFieldLabel {
+  display: none;
+}
+
 @media (max-width: 720px) {
   .appHeaderInner {
     grid-template-columns: auto auto;
@@ -1362,16 +1547,81 @@ textarea:focus-visible {
     justify-self: center;
   }
 
+  /* Stack duplicate comparison for phones: side A, then side B, full-width actions. */
   .dupCompare {
-    grid-template-columns: 76px 1fr 1fr;
-    font-size: 13px;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    font-size: 14px;
   }
 
-  .dupColHead,
-  .dupCell,
-  .dupRowLabel,
+  .dupCorner,
+  .dupCornerHead,
+  .dupRowLabel {
+    display: none;
+  }
+
+  .dupColHead {
+    display: grid;
+    gap: 4px;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface-subtle);
+  }
+
+  .dupColB.dupColHead {
+    border-top: 1px solid var(--border);
+  }
+
+  .dupSideLabel {
+    display: block;
+  }
+
+  .dupCell {
+    display: grid;
+    gap: 4px;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .dupMobileFieldLabel {
+    display: block;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+
   .dupColActions {
-    padding-left: 10px;
-    padding-right: 10px;
+    display: grid;
+    gap: 8px;
+    padding: 14px 16px;
+  }
+
+  .dupColActions .button {
+    width: 100%;
+  }
+
+  .dupFooter .button.dupKeepBoth,
+  .keepBothPanel .dangerActions,
+  .mergeConfirmPanel .dangerActions {
+    display: grid;
+    gap: 8px;
+  }
+
+  .keepBothPanel .dangerActions .button,
+  .mergeConfirmPanel .dangerActions .button,
+  .dupFooter .button.dupKeepBoth {
+    width: 100%;
+  }
+
+  .auditItem {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+
+  .dangerZoneInner {
+    padding: 14px;
   }
 }

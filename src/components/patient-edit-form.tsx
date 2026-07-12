@@ -182,21 +182,22 @@ export function PatientEditForm({
           <div className="duplicateNotice" role="status">
             <WarningIcon size={18} />
             <span>
-              This record is flagged as a possible duplicate of {duplicateNotice.fileNumbers.join(", ")}.{" "}
-              <Link className="rowLink" href={duplicateNotice.reviewHref}>Review the pair</Link>
+              This file may match {duplicateNotice.fileNumbers.join(", ")}.{" "}
+              <Link className="rowLink" href={duplicateNotice.reviewHref}>Review on Possible duplicates</Link>
             </span>
           </div>
         )}
         {formError && <div className="formErrorBanner" role="alert">{formError}</div>}
         {saved && <div className="formSuccessBanner" role="status">Changes saved.</div>}
 
+        <div className="formPrimary">
         <section className="formPanel">
           <h2 className="formPanelHeader">Patient details</h2>
           <div className="formPanelBody formGrid">
             <div className="formField fullWidth">
               <label htmlFor="file_number">File number <span className="required">*</span></label>
               <input id="file_number" value={draft.file_number} onChange={(event) => update("file_number", event.target.value)} autoComplete="off" />
-              <p className="fieldHelp">The clinic file number for this patient. Must be unique.</p>
+              <p className="fieldHelp">Clinic file number — must be unique.</p>
               <FieldError message={errors.file_number} />
             </div>
             <div className="formField">
@@ -274,32 +275,34 @@ export function PatientEditForm({
           </div>
         </section>
 
-        {/* Soft archive only — never hard delete (HPCSA). Same-person duplicates
-            should still be merged on the duplicates page. */}
-        <section className="formPanel dangerZone">
-          <h2 className="formPanelHeader">Archive this file</h2>
-          <div className="formPanelBody">
-            <p className="fieldHelp">
-              Use this when the file was registered in error or should leave the active register.
-              The record is kept for audit and is not deleted. If this is the same person as another
-              file, merge them on Possible duplicates instead.
-            </p>
+        </div>
+
+        {/* Soft archive only — never hard delete. Same person twice → merge instead. */}
+        <section className="dangerZone" aria-labelledby="archive-heading">
+          <div className="dangerZoneInner">
+            <div>
+              <h2 className="dangerZoneTitle" id="archive-heading">Remove from active list</h2>
+              <p className="dangerZoneHelp">
+                For files opened by mistake or no longer needed on the register.
+                Nothing is deleted. If two files are the same person, merge them under Possible duplicates.
+              </p>
+            </div>
             {!showArchive ? (
               <button
                 type="button"
-                className="button buttonSecondary"
+                className="button buttonSecondary buttonSmall"
                 onClick={() => {
                   setShowArchive(true);
                   setArchiveError("");
                 }}
               >
-                Archive patient file
+                Archive this file
               </button>
             ) : (
               <div className="archiveConfirmPanel">
                 <div className="formField">
                   <label htmlFor="archive_reason">
-                    Reason for archiving <span className="required">*</span>
+                    Why is this file being archived? <span className="required">*</span>
                   </label>
                   <textarea
                     id="archive_reason"
@@ -308,7 +311,7 @@ export function PatientEditForm({
                       setArchiveReason(event.target.value);
                       setArchiveError("");
                     }}
-                    placeholder="For example, registered in error, test patient, wrong person"
+                    placeholder="e.g. Opened in error, test patient, wrong person"
                   />
                   <FieldError message={archiveError} />
                 </div>

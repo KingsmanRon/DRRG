@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-07-12 — UI polish (list scopes, hierarchy, mobile duplicates)
+
+- **Doctor list scopes:** Active only · Include archived · Archived only (chips on Patients).
+  Staff always see active-only. RPC `search_patients` gains `p_scope` (enforced doctor-only in SQL).
+- **Archived/merged badges** on list rows; clearer empty states with next-step actions.
+- **Patient page:** Details | History tabs for doctors; quieter archive danger zone; secondary audit trail.
+- **Mobile duplicates:** stacked A/B layout, full-width actions, reception-friendly microcopy.
+- **Copy:** shorter placeholders and page subtitles across register, duplicates, archive/restore.
+
 ## 2026-07-12 — Standalone archive and restore
 
 - **Archive patient file** on the edit page (any active staff): soft-archives with a

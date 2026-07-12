@@ -188,6 +188,7 @@ export type Database = {
           p_offset?: number;
           p_sort?: string;
           p_dir?: string;
+          p_scope?: string;
         };
         Returns: Json;
       };
