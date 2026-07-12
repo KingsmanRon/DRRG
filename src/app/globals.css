@@ -698,9 +698,11 @@ textarea:focus-visible {
   width: min(100%, 1210px);
   max-height: calc(100vh - 56px);
   max-height: calc(100dvh - 56px);
-  min-height: min(680px, calc(100vh - 56px));
+  /* Slightly shorter shell = less portrait crop pressure on the landscape photo */
+  min-height: min(620px, calc(100vh - 56px));
   display: grid;
-  grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+  /* Wider left column so more of the landscape image is visible */
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
   align-items: stretch;
   border-radius: 12px;
   overflow: hidden; /* image follows rounded corners */
@@ -717,13 +719,21 @@ textarea:focus-visible {
   min-height: 0;
   height: 100%;
   align-self: stretch;
-  background: #1a2420;
+  /* Brand green (not grey) if any edge shows while framing the photo */
+  background: #043525;
   overflow: hidden;
 }
 
 .loginImage {
+  /*
+   * Zoom out: "cover" crops hard on a tall panel.
+   * Use a larger source frame with cover + scale so more of the scene is visible
+   * without empty grey bars (panel is brand green behind).
+   */
   object-fit: cover;
-  object-position: center 40%;
+  object-position: center center;
+  transform: scale(0.78);
+  transform-origin: center center;
   image-rendering: auto;
 }
 
