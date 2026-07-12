@@ -19,7 +19,7 @@ export default async function LoginPage({
         <aside className="loginImagePanel" aria-hidden="true">
           <Image
             className="loginImage"
-            src="/dr-makoane-login.jpg"
+            src="/Ideal.png"
             alt=""
             fill
             priority
