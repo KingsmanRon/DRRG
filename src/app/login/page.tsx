@@ -23,9 +23,10 @@ export default async function LoginPage({
             alt=""
             fill
             priority
-            quality={90}
-            sizes="(max-width: 900px) 1px, min(50vw, 640px)"
+            quality={100}
+            sizes="(max-width: 900px) 1px, min(50vw, 720px)"
           />
+          <div className="loginImageOverlay" aria-hidden="true" />
         </aside>
 
         <section className="loginPanel">
