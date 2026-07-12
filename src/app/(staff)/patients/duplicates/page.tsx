@@ -71,7 +71,9 @@ export default async function DuplicatesPage({
       <div className="pageTitleRow">
         <div>
           <h1>Possible duplicates</h1>
-          <p>Compare each pair, then merge them into one record or keep both.</p>
+          <p className="pageSubtitle">
+            Compare each pair. Merge if it is the same person, or keep both files if they are different people.
+          </p>
           <div className="dupLegend" aria-hidden="true">
             <span className="dupLegendItem"><span className="dupSwatch dupSwatchMatch" />Matching</span>
             <span className="dupLegendItem"><span className="dupSwatch dupSwatchDiff" />Different or missing</span>

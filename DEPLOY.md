@@ -81,6 +81,9 @@ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
 - Archive a test patient with a reason → it leaves the list; open by URL →
   read-only archived view. As doctor, **Restore** returns it to the register.
 - A merged (not manually archived) record must **not** offer Restore.
+- As doctor on Patients: **Include archived** / **Archived only** chips find archived
+  files; staff must not see those chips.
+- Apply migration `20260712140000_search_archived_scope.sql` for list scopes.
 
 (There is intentionally no way to delete a patient — records are retained
 per HPCSA guidance; merging archives the losing record.)
