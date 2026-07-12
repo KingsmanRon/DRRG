@@ -711,7 +711,7 @@ textarea:focus-visible {
   box-shadow: 0 10px 32px rgba(20, 42, 32, 0.08);
 }
 
-/* Full-height visual column — image only, centred (not fill/cover stretch crop) */
+/* Full-height visual column — image centred; patterned field fills letterbox areas */
 .loginImagePanel {
   position: relative;
   min-width: 0;
@@ -722,7 +722,26 @@ textarea:focus-visible {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #0a1f18;
+  /* Base brand green + subtle clinical pattern (not empty flat colour) */
+  background-color: #043525;
+  background-image:
+    radial-gradient(ellipse 120% 80% at 50% 50%, rgba(10, 90, 65, 0.55) 0%, transparent 70%),
+    radial-gradient(rgba(255, 255, 255, 0.07) 0.7px, transparent 0.8px),
+    linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.03) 25%,
+      transparent 25%,
+      transparent 50%,
+      rgba(255, 255, 255, 0.03) 50%,
+      rgba(255, 255, 255, 0.03) 75%,
+      transparent 75%,
+      transparent
+    );
+  background-size:
+    100% 100%,
+    14px 14px,
+    22px 22px;
+  background-position: center, 0 0, 0 0;
 }
 
 .loginImage {
@@ -734,6 +753,8 @@ textarea:focus-visible {
   max-height: 100%;
   object-fit: contain;
   object-position: center;
+  /* Soft separation so photo sits cleanly on the pattern */
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.06), 0 12px 40px rgba(0, 0, 0, 0.22);
 }
 
 /* Soft green tint overlay — not solid letterbox bands */
