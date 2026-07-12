@@ -1,6 +1,5 @@
 import Image from "next/image";
 import { ShieldLockIcon } from "@/components/icons";
-import { LoginEcgTrace } from "@/components/login-ecg-trace";
 import { LoginForm } from "@/components/login-form";
 import { PracticeLetterhead } from "@/components/practice-letterhead";
 import logo from "../../../public/logo.png";
@@ -18,13 +17,11 @@ export default async function LoginPage({
       <div className="loginShell">
         {/* Desktop: full-height visual panel only — no branding */}
         <aside className="loginImagePanel" aria-hidden="true">
-          <LoginEcgTrace />
           <Image
             className="loginImage"
             src="/dr-makoane-login.jpg"
             alt=""
-            width={1536}
-            height={1024}
+            fill
             priority
             quality={100}
             sizes="(max-width: 900px) 1px, min(58vw, 720px)"
