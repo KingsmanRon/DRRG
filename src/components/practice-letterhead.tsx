@@ -9,7 +9,58 @@ import {
 import { practice } from "@/lib/practice";
 import logo from "../../public/logo.png";
 
-type Variant = "full" | "footer";
+type Variant = "branding" | "full" | "footer";
+
+function ContactRows({ onDark }: { onDark?: boolean }) {
+  return (
+    <ul className={`practiceIconList${onDark ? " practiceIconListOnDark" : ""}`}>
+      <li>
+        <span className="practiceIcon" aria-hidden="true">
+          <IdBadgeIcon size={16} />
+        </span>
+        <span>
+          PR No: {practice.practiceNumber}
+          <span className="practiceDot" aria-hidden="true">
+            ·
+          </span>
+          MP No: {practice.mpNumber}
+        </span>
+      </li>
+      <li>
+        <span className="practiceIcon" aria-hidden="true">
+          <PhoneIcon size={16} />
+        </span>
+        <a href={practice.telHref}>Tel: {practice.tel}</a>
+      </li>
+      <li>
+        <span className="practiceIcon" aria-hidden="true">
+          <WhatsAppIcon size={16} />
+        </span>
+        <a href={practice.whatsappHref} target="_blank" rel="noopener noreferrer">
+          Cell / WhatsApp: {practice.cell}
+        </a>
+      </li>
+      <li>
+        <span className="practiceIcon" aria-hidden="true">
+          <MailIcon size={16} />
+        </span>
+        <a href={practice.emailHref}>{practice.email}</a>
+      </li>
+      <li>
+        <span className="practiceIcon" aria-hidden="true">
+          <MapPinIcon size={16} />
+        </span>
+        <span>{practice.physicalAddress}</span>
+      </li>
+      <li>
+        <span className="practiceIcon" aria-hidden="true">
+          <MapPinIcon size={16} />
+        </span>
+        <span>{practice.postalAddress}</span>
+      </li>
+    </ul>
+  );
+}
 
 export function PracticeLetterhead({ variant = "full" }: { variant?: Variant }) {
   if (variant === "footer") {
@@ -53,56 +104,19 @@ export function PracticeLetterhead({ variant = "full" }: { variant?: Variant }) 
     );
   }
 
-  // Login: brand logo sits above this block; no trading name / doctor name text.
+  if (variant === "branding") {
+    return (
+      <div className="practiceLetterhead practiceLetterheadBranding" aria-label="Practice contact details">
+        <p className="practiceQualsLine practiceQualsLineOnDark">{practice.qualifications}</p>
+        <ContactRows onDark />
+      </div>
+    );
+  }
+
   return (
     <div className="practiceLetterhead" aria-label="Practice contact details">
       <p className="practiceQualsLine">{practice.qualifications}</p>
-      <ul className="practiceIconList">
-        <li>
-          <span className="practiceIcon" aria-hidden="true">
-            <IdBadgeIcon size={16} />
-          </span>
-          <span>
-            PR No: {practice.practiceNumber}
-            <span className="practiceDot" aria-hidden="true">
-              ·
-            </span>
-            MP No: {practice.mpNumber}
-          </span>
-        </li>
-        <li>
-          <span className="practiceIcon" aria-hidden="true">
-            <PhoneIcon size={16} />
-          </span>
-          <a href={practice.telHref}>Tel: {practice.tel}</a>
-        </li>
-        <li>
-          <span className="practiceIcon" aria-hidden="true">
-            <WhatsAppIcon size={16} />
-          </span>
-          <a href={practice.whatsappHref} target="_blank" rel="noopener noreferrer">
-            Cell / WhatsApp: {practice.cell}
-          </a>
-        </li>
-        <li>
-          <span className="practiceIcon" aria-hidden="true">
-            <MailIcon size={16} />
-          </span>
-          <a href={practice.emailHref}>{practice.email}</a>
-        </li>
-        <li>
-          <span className="practiceIcon" aria-hidden="true">
-            <MapPinIcon size={16} />
-          </span>
-          <span>{practice.physicalAddress}</span>
-        </li>
-        <li>
-          <span className="practiceIcon" aria-hidden="true">
-            <MapPinIcon size={16} />
-          </span>
-          <span>{practice.postalAddress}</span>
-        </li>
-      </ul>
+      <ContactRows />
     </div>
   );
 }

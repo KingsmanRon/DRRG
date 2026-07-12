@@ -683,57 +683,89 @@ textarea:focus-visible {
   margin-top: 12px;
 }
 
+/* Login: centred card — image panel + sign-in (not a full-page stretch). */
 .loginPage {
   min-height: 100vh;
   display: grid;
-  grid-template-columns: minmax(0, 1.15fr) minmax(320px, 520px);
-  background: #ffffff;
+  place-items: center;
+  padding: 32px 24px;
+  background: #eef1ef;
 }
 
-.loginHero {
-  position: relative;
-  min-height: 100vh;
+.loginShell {
+  width: min(100%, 1210px);
+  min-height: min(720px, calc(100vh - 64px));
+  display: grid;
+  grid-template-columns: 42% 58%;
+  border-radius: 14px;
   overflow: hidden;
-  background: #0a3d2c;
+  background: #ffffff;
+  border: 1px solid var(--border);
+  box-shadow: 0 18px 48px rgba(20, 42, 32, 0.1);
 }
 
-.loginHeroImage {
+.loginImagePanel {
+  position: relative;
+  min-height: 100%;
+  background: #043525;
+}
+
+.loginImage {
   object-fit: cover;
-  object-position: center;
+  /* Keep stethoscope / desk in frame */
+  object-position: 38% 58%;
 }
 
-.loginHeroScrim {
+.loginImageOverlay {
   position: absolute;
   inset: 0;
+  z-index: 1;
   background: linear-gradient(
-    105deg,
-    rgba(3, 40, 28, 0.18) 0%,
-    rgba(3, 40, 28, 0.08) 45%,
-    rgba(255, 255, 255, 0.12) 100%
+    165deg,
+    rgba(4, 45, 32, 0.72) 0%,
+    rgba(4, 45, 32, 0.48) 42%,
+    rgba(4, 45, 32, 0.62) 100%
   );
   pointer-events: none;
+}
+
+.loginBrandBlock {
+  position: absolute;
+  z-index: 2;
+  left: 0;
+  right: 0;
+  top: 18%;
+  padding: 0 28px;
+  color: #ffffff;
+}
+
+.loginBrandLogo {
+  display: block;
+  height: 52px;
+  width: auto;
+  margin: 0 auto 18px;
+  object-fit: contain;
+  /* Soft plate so a dark/light logo both read on the photo */
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
 }
 
 .loginPanel {
   position: relative;
   z-index: 1;
   width: 100%;
-  min-height: 100vh;
-  max-height: 100vh;
-  overflow: auto;
-  padding: 40px 36px 48px;
+  min-height: 100%;
+  padding: 44px 48px;
   background: #ffffff;
-  border: none;
-  border-left: 1px solid var(--border);
-  border-radius: 0;
-  box-shadow: none;
   display: flex;
   flex-direction: column;
   justify-content: center;
 }
 
 .loginPanel h1 {
-  margin: 28px 0 8px;
+  margin: 0 0 8px;
   font-size: 2rem;
 }
 
@@ -751,8 +783,40 @@ textarea:focus-visible {
   margin-top: 24px;
 }
 
-.loginPanel .brandLogoLogin {
-  align-self: center;
+.practiceLetterheadBranding {
+  margin: 0;
+  padding: 0;
+  border: none;
+  color: #f4f7f5;
+}
+
+.practiceQualsLineOnDark {
+  text-align: center;
+  color: rgba(255, 255, 255, 0.88);
+  margin-bottom: 16px;
+}
+
+.practiceIconListOnDark {
+  color: rgba(255, 255, 255, 0.95);
+  gap: 11px;
+  font-size: 12.5px;
+}
+
+.practiceIconListOnDark .practiceIcon {
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.practiceIconListOnDark a {
+  color: #ffffff;
+  font-weight: 650;
+}
+
+.practiceIconListOnDark a:hover {
+  text-decoration: underline;
+}
+
+.practiceIconListOnDark .practiceDot {
+  color: rgba(255, 255, 255, 0.45);
 }
 
 /* Practice letterhead (login) + staff footer */
@@ -1719,37 +1783,39 @@ textarea:focus-visible {
 
 @media (max-width: 900px) {
   .loginPage {
+    padding: 20px 14px;
+    align-items: stretch;
+  }
+
+  .loginShell {
     grid-template-columns: 1fr;
-    place-items: center;
-    padding: 28px 18px;
-    background: #0a3d2c;
+    min-height: auto;
+    max-width: 480px;
+    width: 100%;
+    margin: 0 auto;
   }
 
-  .loginHero {
-    position: fixed;
-    inset: 0;
-    min-height: 100%;
-    z-index: 0;
+  .loginImagePanel {
+    min-height: 240px;
   }
 
-  .loginHeroScrim {
-    background: linear-gradient(
-      180deg,
-      rgba(3, 40, 28, 0.55) 0%,
-      rgba(3, 40, 28, 0.72) 100%
-    );
+  .loginBrandBlock {
+    top: 12%;
+    padding: 0 20px 16px;
+  }
+
+  .loginBrandLogo {
+    height: 44px;
   }
 
   .loginPanel {
-    min-height: auto;
-    max-height: none;
-    width: min(100%, 480px);
     padding: 28px 24px 32px;
-    border: 1px solid var(--border);
-    border-top: 4px solid var(--green);
-    border-radius: var(--panel-radius);
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
     justify-content: flex-start;
+  }
+
+  .practiceIconListOnDark {
+    font-size: 12px;
+    gap: 8px;
   }
 }
 
