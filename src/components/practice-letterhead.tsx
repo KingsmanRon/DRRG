@@ -22,10 +22,7 @@ export function PracticeLetterhead({ variant = "full" }: { variant?: Variant }) 
             alt={practice.tradingName}
             priority={false}
           />
-          <p className="practiceDoctor">
-            {practice.doctorName}{" "}
-            <span className="practiceQuals">{practice.qualifications}</span>
-          </p>
+          <p className="practiceQuals practiceFooterQuals">{practice.qualifications}</p>
           <p className="practiceMeta">
             PR No: {practice.practiceNumber}
             <span className="practiceDot" aria-hidden="true">
