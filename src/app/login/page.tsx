@@ -14,7 +14,7 @@ export default async function LoginPage({
   return (
     <main className="loginPage">
       <div className="loginShell">
-        <aside className="loginImagePanel" aria-label="Practice branding">
+        <aside className="loginImagePanel" aria-hidden="true">
           <Image
             className="loginImage"
             src="/dr-makoane-login.jpg"
@@ -23,23 +23,28 @@ export default async function LoginPage({
             priority
             sizes="(max-width: 900px) 100vw, 520px"
           />
-          <div className="loginImageOverlay" aria-hidden="true" />
-          <div className="loginBrandBlock">
-            <Image className="loginBrandLogo" src={logo} alt="DRG Makoane" priority />
-            <PracticeLetterhead variant="branding" />
-          </div>
+          <div className="loginImageOverlay" />
         </aside>
 
         <section className="loginPanel">
-          <h1>Sign in</h1>
-          <p>Sign in with your authorised staff account.</p>
-          {accessDenied && (
-            <div className="formErrorBanner" role="alert">
-              This account is not authorised for the patient register. Use an active staff login,
-              or ask an administrator to activate your profile.
-            </div>
-          )}
-          <LoginForm />
+          <div className="loginPanelBrand">
+            <Image className="loginPanelLogo" src={logo} alt="DRG Makoane" priority />
+            <PracticeLetterhead variant="full" />
+          </div>
+
+          <div className="loginPanelDivider" role="presentation" />
+
+          <div className="loginPanelForm">
+            <h1>Sign in</h1>
+            <p>Sign in with your authorised staff account.</p>
+            {accessDenied && (
+              <div className="formErrorBanner" role="alert">
+                This account is not authorised for the patient register. Use an active staff login,
+                or ask an administrator to activate your profile.
+              </div>
+            )}
+            <LoginForm />
+          </div>
         </section>
       </div>
     </main>

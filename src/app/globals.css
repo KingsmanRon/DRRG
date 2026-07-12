@@ -722,34 +722,11 @@ textarea:focus-visible {
   z-index: 1;
   background: linear-gradient(
     165deg,
-    rgba(4, 45, 32, 0.72) 0%,
-    rgba(4, 45, 32, 0.48) 42%,
-    rgba(4, 45, 32, 0.62) 100%
+    rgba(4, 45, 32, 0.55) 0%,
+    rgba(4, 45, 32, 0.28) 45%,
+    rgba(4, 45, 32, 0.45) 100%
   );
   pointer-events: none;
-}
-
-.loginBrandBlock {
-  position: absolute;
-  z-index: 2;
-  left: 0;
-  right: 0;
-  top: 18%;
-  padding: 0 28px;
-  color: #ffffff;
-}
-
-.loginBrandLogo {
-  display: block;
-  height: 52px;
-  width: auto;
-  margin: 0 auto 18px;
-  object-fit: contain;
-  /* Soft plate so a dark/light logo both read on the photo */
-  padding: 10px 14px;
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.94);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
 }
 
 .loginPanel {
@@ -757,20 +734,68 @@ textarea:focus-visible {
   z-index: 1;
   width: 100%;
   min-height: 100%;
-  padding: 44px 48px;
+  padding: 68px 64px;
   background: #ffffff;
   display: flex;
   flex-direction: column;
   justify-content: center;
+  overflow: auto;
 }
 
-.loginPanel h1 {
+.loginPanelBrand {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.loginPanelLogo {
+  display: block;
+  height: 48px;
+  width: auto;
+  margin: 0 auto 16px;
+  object-fit: contain;
+}
+
+.loginPanel .practiceLetterhead {
+  margin: 0;
+  padding: 0;
+  border: none;
+}
+
+.loginPanel .practiceQualsLine {
+  text-align: center;
+  margin-bottom: 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.loginPanel .practiceIconList {
+  gap: 9px;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.loginPanel .practiceIcon {
+  color: var(--green);
+  width: 20px;
+  height: 20px;
+}
+
+.loginPanelDivider {
+  height: 1px;
+  margin: 28px 0 26px;
+  background: var(--border);
+  border: none;
+}
+
+.loginPanelForm h1 {
   margin: 0 0 8px;
-  font-size: 2rem;
+  font-size: 1.85rem;
 }
 
-.loginPanel > p {
-  margin-bottom: 26px;
+.loginPanelForm > p {
+  margin-bottom: 22px;
   color: var(--muted);
 }
 
@@ -781,42 +806,6 @@ textarea:focus-visible {
 .loginPanel .button {
   width: 100%;
   margin-top: 24px;
-}
-
-.practiceLetterheadBranding {
-  margin: 0;
-  padding: 0;
-  border: none;
-  color: #f4f7f5;
-}
-
-.practiceQualsLineOnDark {
-  text-align: center;
-  color: rgba(255, 255, 255, 0.88);
-  margin-bottom: 16px;
-}
-
-.practiceIconListOnDark {
-  color: rgba(255, 255, 255, 0.95);
-  gap: 11px;
-  font-size: 12.5px;
-}
-
-.practiceIconListOnDark .practiceIcon {
-  color: rgba(255, 255, 255, 0.92);
-}
-
-.practiceIconListOnDark a {
-  color: #ffffff;
-  font-weight: 650;
-}
-
-.practiceIconListOnDark a:hover {
-  text-decoration: underline;
-}
-
-.practiceIconListOnDark .practiceDot {
-  color: rgba(255, 255, 255, 0.45);
 }
 
 /* Practice letterhead (login) + staff footer */
@@ -1796,26 +1785,20 @@ textarea:focus-visible {
   }
 
   .loginImagePanel {
-    min-height: 240px;
-  }
-
-  .loginBrandBlock {
-    top: 12%;
-    padding: 0 20px 16px;
-  }
-
-  .loginBrandLogo {
-    height: 44px;
+    min-height: 220px;
   }
 
   .loginPanel {
-    padding: 28px 24px 32px;
+    padding: 36px 28px 40px;
     justify-content: flex-start;
   }
 
-  .practiceIconListOnDark {
-    font-size: 12px;
-    gap: 8px;
+  .loginPanelLogo {
+    height: 44px;
+  }
+
+  .loginPanelDivider {
+    margin: 22px 0 20px;
   }
 }
 

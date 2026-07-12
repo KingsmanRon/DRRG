@@ -9,14 +9,14 @@ import {
 import { practice } from "@/lib/practice";
 import logo from "../../public/logo.png";
 
-type Variant = "branding" | "full" | "footer";
+type Variant = "full" | "footer";
 
-function ContactRows({ onDark }: { onDark?: boolean }) {
+function ContactRows() {
   return (
-    <ul className={`practiceIconList${onDark ? " practiceIconListOnDark" : ""}`}>
+    <ul className="practiceIconList">
       <li>
         <span className="practiceIcon" aria-hidden="true">
-          <IdBadgeIcon size={16} />
+          <IdBadgeIcon size={15} />
         </span>
         <span>
           PR No: {practice.practiceNumber}
@@ -28,13 +28,13 @@ function ContactRows({ onDark }: { onDark?: boolean }) {
       </li>
       <li>
         <span className="practiceIcon" aria-hidden="true">
-          <PhoneIcon size={16} />
+          <PhoneIcon size={15} />
         </span>
         <a href={practice.telHref}>Tel: {practice.tel}</a>
       </li>
       <li>
         <span className="practiceIcon" aria-hidden="true">
-          <WhatsAppIcon size={16} />
+          <WhatsAppIcon size={15} />
         </span>
         <a href={practice.whatsappHref} target="_blank" rel="noopener noreferrer">
           Cell / WhatsApp: {practice.cell}
@@ -42,19 +42,19 @@ function ContactRows({ onDark }: { onDark?: boolean }) {
       </li>
       <li>
         <span className="practiceIcon" aria-hidden="true">
-          <MailIcon size={16} />
+          <MailIcon size={15} />
         </span>
         <a href={practice.emailHref}>{practice.email}</a>
       </li>
       <li>
         <span className="practiceIcon" aria-hidden="true">
-          <MapPinIcon size={16} />
+          <MapPinIcon size={15} />
         </span>
         <span>{practice.physicalAddress}</span>
       </li>
       <li>
         <span className="practiceIcon" aria-hidden="true">
-          <MapPinIcon size={16} />
+          <MapPinIcon size={15} />
         </span>
         <span>{practice.postalAddress}</span>
       </li>
@@ -101,15 +101,6 @@ export function PracticeLetterhead({ variant = "full" }: { variant?: Variant }) 
           </p>
         </div>
       </footer>
-    );
-  }
-
-  if (variant === "branding") {
-    return (
-      <div className="practiceLetterhead practiceLetterheadBranding" aria-label="Practice contact details">
-        <p className="practiceQualsLine practiceQualsLineOnDark">{practice.qualifications}</p>
-        <ContactRows onDark />
-      </div>
     );
   }
 
