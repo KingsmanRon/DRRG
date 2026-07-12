@@ -695,16 +695,13 @@ textarea:focus-visible {
 }
 
 .loginShell {
-  width: min(100%, 1240px);
-  max-height: calc(100vh - 48px);
-  max-height: calc(100dvh - 48px);
-  /*
-   * Photo is ~1.5:1 landscape. A tall/narrow left column forces a heavy cover crop
-   * (looks zoomed in). Prefer a wider left panel + shorter card so cover shows more.
-   */
-  min-height: min(500px, calc(100vh - 48px));
+  width: min(100%, 1210px);
+  max-height: calc(100vh - 56px);
+  max-height: calc(100dvh - 56px);
+  /* Shorter + wider left column = cover crops less (true zoom-out, still edge-to-edge) */
+  min-height: min(580px, calc(100vh - 56px));
   display: grid;
-  grid-template-columns: minmax(0, 1.65fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
   align-items: stretch;
   border-radius: 12px;
   overflow: hidden; /* image follows rounded corners */
