@@ -1310,6 +1310,45 @@ textarea:focus-visible {
   font-weight: 600;
 }
 
+.dangerZone .formPanelHeader {
+  color: var(--danger);
+}
+
+.archiveConfirmPanel {
+  margin-top: 12px;
+  padding: 16px 18px;
+  border: 1px solid #e5b4b4;
+  border-radius: var(--panel-radius);
+  background: #fff6f6;
+}
+
+.archiveConfirmPanel .formField {
+  margin-bottom: 12px;
+}
+
+.buttonDanger {
+  color: #fff;
+  background: var(--danger);
+  border: 1px solid var(--danger);
+}
+
+.buttonDanger:hover:not(:disabled) {
+  background: #8a2828;
+  border-color: #8a2828;
+}
+
+.buttonDanger:disabled {
+  opacity: 0.65;
+}
+
+.archivedActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: flex-start;
+  justify-content: flex-end;
+}
+
 @media (max-width: 720px) {
   .appHeaderInner {
     grid-template-columns: auto auto;

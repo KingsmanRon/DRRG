@@ -247,6 +247,19 @@ export type Database = {
         };
         Returns: number;
       };
+      archive_patient: {
+        Args: {
+          p_id: string;
+          p_reason: string;
+        };
+        Returns: { patient_id: string; file_number: string }[];
+      };
+      restore_patient: {
+        Args: {
+          p_id: string;
+        };
+        Returns: { patient_id: string; file_number: string }[];
+      };
       list_duplicate_reviews: {
         Args: Record<string, never>;
         Returns: {

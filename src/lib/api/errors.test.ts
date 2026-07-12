@@ -40,4 +40,24 @@ describe("mapPatientMutationError", () => {
     const response = mapPatientMutationError({ code: "42501", message: "permission denied" }, "update");
     expect(response.status).toBe(403);
   });
+
+  it("maps already-archived to 409 on archive", async () => {
+    const response = mapPatientMutationError(
+      { code: "55000", message: "patient_already_archived" },
+      "archive",
+    );
+    expect(response.status).toBe(409);
+    const json = await body(response);
+    expect(json.error).toMatch(/already archived/i);
+  });
+
+  it("maps merged-readonly restore to 409", async () => {
+    const response = mapPatientMutationError(
+      { code: "55000", message: "patient_merged_readonly: cannot restore" },
+      "restore",
+    );
+    expect(response.status).toBe(409);
+    const json = await body(response);
+    expect(json.error).toMatch(/merged/i);
+  });
 });

@@ -78,6 +78,9 @@ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
   leaves the queue and stays resolved after a reload.
 - Sign in as a **doctor** → open a patient → **Activity history** lists create /
   update / merge events with staff names.
+- Archive a test patient with a reason → it leaves the list; open by URL →
+  read-only archived view. As doctor, **Restore** returns it to the register.
+- A merged (not manually archived) record must **not** offer Restore.
 
 (There is intentionally no way to delete a patient — records are retained
 per HPCSA guidance; merging archives the losing record.)

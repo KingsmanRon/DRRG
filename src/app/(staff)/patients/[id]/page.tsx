@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PatientAuditTrail } from "@/components/patient-audit-trail";
 import { PatientEditForm, type DuplicateNotice, type PatientRecord } from "@/components/patient-edit-form";
+import { PatientRestoreButton } from "@/components/patient-restore-button";
 import { WarningIcon } from "@/components/icons";
 import { requireStaffPage } from "@/lib/auth/session";
 import { mapAuditRows } from "@/lib/patients/audit";
@@ -66,7 +67,8 @@ export default async function PatientDetailPage({
   const patient = data as PatientRow;
   const auditEvents = staff.role === "doctor" ? await loadAuditTrail(id) : [];
 
-  // Archived (merged) records are read only: show where the record went.
+  // Archived records are read only. Merged archives point at the survivor;
+  // manually archived files can be restored by a doctor.
   if (patient.status === "archived") {
     let survivor: { id: string; file_number: string } | null = null;
     if (patient.merged_into) {
@@ -77,6 +79,7 @@ export default async function PatientDetailPage({
         .maybeSingle();
       survivor = survivorRow ?? null;
     }
+    const canRestore = !patient.merged_into && staff.role === "doctor";
 
     return (
       <main className="pageShell">
@@ -90,7 +93,13 @@ export default async function PatientDetailPage({
                 {patient.archived_at ? ` on ${formatDate(patient.archived_at)}` : ""} and is read only.
               </>
             ) : (
-              <>This record was archived{patient.archived_at ? ` on ${formatDate(patient.archived_at)}` : ""} and is read only.</>
+              <>
+                This record was archived{patient.archived_at ? ` on ${formatDate(patient.archived_at)}` : ""} and
+                is not on the active register.
+                {staff.role === "doctor"
+                  ? " A doctor can restore it if it was archived in error."
+                  : " Ask a doctor if it should be restored."}
+              </>
             )}
           </span>
         </div>
@@ -100,11 +109,17 @@ export default async function PatientDetailPage({
             <h1>{patient.first_names} {patient.surname}</h1>
             <p className="mono muted">{patient.file_number} · Archived</p>
           </div>
-          {survivor ? (
-            <Link className="button buttonPrimary" href={`/patients/${survivor.id}`}>Open kept record {survivor.file_number}</Link>
-          ) : (
-            <Link className="button buttonSecondary" href="/patients">Back to patients</Link>
-          )}
+          <div className="archivedActions">
+            {survivor ? (
+              <Link className="button buttonPrimary" href={`/patients/${survivor.id}`}>
+                Open kept record {survivor.file_number}
+              </Link>
+            ) : canRestore ? (
+              <PatientRestoreButton patientId={patient.id} fileNumber={patient.file_number} />
+            ) : (
+              <Link className="button buttonSecondary" href="/patients">Back to patients</Link>
+            )}
+          </div>
         </div>
 
         <section className="formPanel">

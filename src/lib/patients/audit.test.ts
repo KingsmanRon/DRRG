@@ -38,4 +38,36 @@ describe("mapAuditRows", () => {
     expect(events[0].actor_name).toBe("Staff member");
     expect(events[0].summary).toBe("Patient registered");
   });
+
+  it("includes manual archive reason", () => {
+    const events = mapAuditRows(
+      [
+        {
+          id: 3,
+          action: "patient_archived",
+          metadata: { kind: "manual", reason: "Registered in error" },
+          created_at: "2026-07-12T10:00:00Z",
+          actor_user_id: "user-1",
+        },
+      ],
+      new Map([["user-1", "Reception"]]),
+    );
+    expect(events[0].summary).toBe("Record archived: Registered in error");
+  });
+
+  it("labels restore events", () => {
+    const events = mapAuditRows(
+      [
+        {
+          id: 4,
+          action: "patient_restored",
+          metadata: { kind: "manual" },
+          created_at: "2026-07-12T10:00:00Z",
+          actor_user_id: "user-1",
+        },
+      ],
+      new Map([["user-1", "Dr Refiloe G"]]),
+    );
+    expect(events[0].summary).toBe("Record restored to active register");
+  });
 });
