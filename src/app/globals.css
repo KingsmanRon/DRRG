@@ -690,7 +690,7 @@ textarea:focus-visible {
   display: grid;
   place-items: center;
   padding: 28px 24px;
-  background: #e8ecea;
+  background: #ffffff;
   overflow-x: hidden;
 }
 
