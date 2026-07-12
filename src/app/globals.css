@@ -725,15 +725,53 @@ textarea:focus-visible {
   margin: 0 0 8px;
   padding-bottom: 20px;
   border-bottom: 1px solid var(--border);
-  text-align: center;
+  text-align: left;
 }
 
-.practiceName {
-  margin: 0 0 8px;
-  font-size: 1.15rem;
-  font-weight: 800;
-  letter-spacing: 0.04em;
+.practiceQualsLine {
+  margin: 0 0 14px;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+.practiceIconList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.practiceIconList li {
+  display: grid;
+  grid-template-columns: 22px 1fr;
+  gap: 10px;
+  align-items: start;
+  line-height: 1.4;
+}
+
+.practiceIcon {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
   color: var(--green);
+  flex-shrink: 0;
+}
+
+.practiceIconList a {
+  color: var(--green);
+  text-decoration: none;
+  font-weight: 650;
+}
+
+.practiceIconList a:hover {
+  text-decoration: underline;
 }
 
 .practiceDoctor {
@@ -762,16 +800,6 @@ textarea:focus-visible {
   color: var(--border-strong);
 }
 
-.practiceContactList {
-  list-style: none;
-  margin: 0 0 12px;
-  padding: 0;
-  display: grid;
-  gap: 6px;
-  font-size: 13px;
-}
-
-.practiceContactList a,
 .practiceContacts a,
 .practiceFooter a {
   color: var(--green);
@@ -779,19 +807,9 @@ textarea:focus-visible {
   font-weight: 650;
 }
 
-.practiceContactList a:hover,
 .practiceContacts a:hover,
 .practiceFooter a:hover {
   text-decoration: underline;
-}
-
-.practiceLabel {
-  display: inline-block;
-  min-width: 7.5rem;
-  margin-right: 6px;
-  color: var(--muted);
-  font-weight: 600;
-  text-align: right;
 }
 
 .practiceAddress {
@@ -1752,13 +1770,6 @@ textarea:focus-visible {
 
   .dangerZoneInner {
     padding: 14px;
-  }
-
-  .practiceLabel {
-    display: block;
-    min-width: 0;
-    margin: 0 0 2px;
-    text-align: center;
   }
 
   .practiceFooterInner {
