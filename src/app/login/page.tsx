@@ -21,7 +21,8 @@ export default async function LoginPage({
             className="loginImage"
             src="/dr-makoane-login.jpg"
             alt=""
-            fill
+            width={1536}
+            height={1024}
             priority
             quality={100}
             sizes="(max-width: 900px) 1px, min(58vw, 720px)"
