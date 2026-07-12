@@ -700,35 +700,31 @@ textarea:focus-visible {
   max-height: calc(100dvh - 56px);
   min-height: min(680px, calc(100vh - 56px));
   display: grid;
-  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+  align-items: stretch;
   border-radius: 12px;
-  overflow: hidden;
+  overflow: hidden; /* image follows rounded corners */
   background: #ffffff;
   border: 1px solid var(--border);
   border-top: 4px solid var(--green);
   box-shadow: 0 10px 32px rgba(20, 42, 32, 0.08);
 }
 
+/* Full-height visual column — image only, no branding */
 .loginImagePanel {
   position: relative;
-  min-height: 100%;
   min-width: 0;
-  background: #f3f5f4;
+  min-height: 0;
+  height: 100%;
+  align-self: stretch;
+  background: #1a2420;
+  overflow: hidden;
 }
 
 .loginImage {
-  object-fit: contain;
-  object-position: center center;
+  object-fit: cover;
+  object-position: center 40%;
   image-rendering: auto;
-}
-
-.loginImageOverlay {
-  display: none;
-}
-
-/* Compact brand strip — shown only on tablet/mobile when image panel is hidden */
-.loginMobileBrand {
-  display: none;
 }
 
 .loginPanel {
@@ -1859,7 +1855,7 @@ textarea:focus-visible {
   display: none;
 }
 
-/* Tablet & mobile: single column, hide large image, compact branded header */
+/* Tablet & mobile: single column form; hide large image panel */
 @media (max-width: 900px) {
   .loginPage {
     padding: 16px 24px;
@@ -1882,34 +1878,15 @@ textarea:focus-visible {
     display: none;
   }
 
-  .loginMobileBrand {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin: -36px -24px 20px;
-    padding: 18px 24px 16px;
-    border-bottom: 1px solid var(--border);
-    background: #ffffff;
-    border-top: 3px solid var(--green);
-  }
-
-  .loginMobileBrandLogo {
-    display: block;
-    height: 40px;
-    width: auto;
-    object-fit: contain;
-  }
-
-  /* Full logo in brand block is redundant next to mobile header strip */
-  .loginPanelLogo {
-    display: none;
-  }
-
   .loginPanel {
     padding: 36px 24px 32px;
     justify-content: flex-start;
     max-height: none;
     overflow: visible;
+  }
+
+  .loginPanelLogo {
+    height: 42px;
   }
 
   .loginPanel .practiceQualsLine {
@@ -1952,11 +1929,6 @@ textarea:focus-visible {
 
   .loginPanel {
     padding: 28px 20px 28px;
-  }
-
-  .loginMobileBrand {
-    margin: -28px -20px 16px;
-    padding: 14px 16px 12px;
   }
 }
 

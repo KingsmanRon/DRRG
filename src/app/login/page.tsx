@@ -15,7 +15,7 @@ export default async function LoginPage({
   return (
     <main className="loginPage">
       <div className="loginShell">
-        {/* Desktop only: large photographic left panel */}
+        {/* Desktop: full-height visual panel only — no branding */}
         <aside className="loginImagePanel" aria-hidden="true">
           <Image
             className="loginImage"
@@ -24,18 +24,11 @@ export default async function LoginPage({
             fill
             priority
             quality={90}
-            // Panel is ~500–560 CSS px wide; request 2x for sharp retina cover crop.
-            sizes="(max-width: 900px) 1px, min(56vw, 900px)"
+            sizes="(max-width: 900px) 1px, min(50vw, 640px)"
           />
-          <div className="loginImageOverlay" />
         </aside>
 
         <section className="loginPanel">
-          {/* Compact brand bar for tablet/mobile (image panel is hidden) */}
-          <header className="loginMobileBrand">
-            <Image className="loginMobileBrandLogo" src={logo} alt="DRG Makoane" priority />
-          </header>
-
           <div className="loginPanelBrand">
             <Image className="loginPanelLogo" src={logo} alt="DRG Makoane" priority />
             <PracticeLetterhead variant="full" />
