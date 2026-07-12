@@ -1,7 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { PatientAuditTrail } from "@/components/patient-audit-trail";
 import { PatientEditForm, type DuplicateNotice, type PatientRecord } from "@/components/patient-edit-form";
 import { WarningIcon } from "@/components/icons";
+import { requireStaffPage } from "@/lib/auth/session";
+import { mapAuditRows } from "@/lib/patients/audit";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -16,12 +19,40 @@ function formatDate(value: string | null): string {
   return new Date(value).toLocaleDateString("en-ZA", { year: "numeric", month: "long", day: "numeric" });
 }
 
+async function loadAuditTrail(patientId: string) {
+  const supabase = await createClient();
+  const { data: events, error } = await supabase
+    .from("audit_events")
+    .select("id, action, metadata, created_at, actor_user_id")
+    .eq("patient_id", patientId)
+    .order("created_at", { ascending: false })
+    .limit(40);
+
+  // RLS: only doctors can read audit_events; staff get an empty list / error.
+  if (error || !events) return [];
+
+  const actorIds = Array.from(new Set(events.map((event) => event.actor_user_id)));
+  const actorNames = new Map<string, string>();
+  if (actorIds.length > 0) {
+    const { data: profiles } = await supabase
+      .from("profiles")
+      .select("user_id, display_name")
+      .in("user_id", actorIds);
+    for (const profile of profiles ?? []) {
+      actorNames.set(profile.user_id, profile.display_name);
+    }
+  }
+
+  return mapAuditRows(events, actorNames);
+}
+
 export default async function PatientDetailPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  const staff = await requireStaffPage();
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("patients")
@@ -33,6 +64,7 @@ export default async function PatientDetailPage({
 
   if (error || !data) notFound();
   const patient = data as PatientRow;
+  const auditEvents = staff.role === "doctor" ? await loadAuditTrail(id) : [];
 
   // Archived (merged) records are read only: show where the record went.
   if (patient.status === "archived") {
@@ -94,6 +126,8 @@ export default async function PatientDetailPage({
             </dl>
           </div>
         </section>
+
+        {staff.role === "doctor" && <PatientAuditTrail events={auditEvents} />}
       </main>
     );
   }
@@ -109,7 +143,7 @@ export default async function PatientDetailPage({
   const otherIds = Array.from(
     new Set(
       (flaggedRows ?? []).map((row) =>
-        row.patient_id === id ? (row.candidate_patient_id as string) : (row.patient_id as string),
+        row.patient_id === id ? row.candidate_patient_id : row.patient_id,
       ),
     ),
   );
@@ -121,11 +155,20 @@ export default async function PatientDetailPage({
       .eq("status", "active");
     if (others && others.length > 0) {
       duplicateNotice = {
-        fileNumbers: others.map((other) => other.file_number as string),
+        fileNumbers: others.map((other) => other.file_number),
         reviewHref: `/patients/duplicates?patient=${id}`,
       };
     }
   }
 
-  return <PatientEditForm patient={patient} duplicateNotice={duplicateNotice} />;
+  return (
+    <>
+      <PatientEditForm patient={patient} duplicateNotice={duplicateNotice} />
+      {staff.role === "doctor" && (
+        <div className="pageShell auditTrailWrap">
+          <PatientAuditTrail events={auditEvents} />
+        </div>
+      )}
+    </>
+  );
 }

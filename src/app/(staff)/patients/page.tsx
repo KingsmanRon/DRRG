@@ -2,10 +2,8 @@ import Link from "next/link";
 import { PlusIcon } from "@/components/icons";
 import { PatientSearch } from "@/components/patient-search";
 import { PatientTable, type PatientListItem, type SortColumn, type SortDir } from "@/components/patient-table";
-import { isDemoMode } from "@/lib/env";
-import { demoPatients } from "@/lib/patients/demo";
-import { normalisePhone } from "@/lib/patients/phone";
 import { createClient } from "@/lib/supabase/server";
+import type { Json } from "@/lib/supabase/database.types";
 
 export const dynamic = "force-dynamic";
 
@@ -16,16 +14,15 @@ type PatientSearchResult = {
   total_count: number;
 };
 
-function demoSorted(items: PatientListItem[], sort?: SortColumn, dir?: SortDir): PatientListItem[] {
-  if (!sort) return items;
-  const factor = dir === "desc" ? -1 : 1;
-  const key = (patient: PatientListItem) =>
-    sort === "file_number"
-      ? patient.file_number.toLowerCase()
-      : sort === "name"
-        ? `${patient.surname} ${patient.first_names}`.toLowerCase()
-        : patient.date_of_birth;
-  return [...items].sort((a, b) => key(a).localeCompare(key(b)) * factor);
+function parseSearchResult(data: Json | null): PatientSearchResult {
+  if (!data || typeof data !== "object" || Array.isArray(data)) {
+    return { patients: [], total_count: 0 };
+  }
+  const record = data as { patients?: PatientListItem[]; total_count?: number };
+  return {
+    patients: Array.isArray(record.patients) ? record.patients : [],
+    total_count: Number(record.total_count ?? 0),
+  };
 }
 
 async function getPatients(
@@ -34,35 +31,6 @@ async function getPatients(
   sort?: SortColumn,
   dir?: SortDir,
 ): Promise<PatientSearchResult> {
-  if (isDemoMode()) {
-    const term = query.toLowerCase();
-    const phoneTerm = normalisePhone(query);
-    const matches = demoPatients
-      .map((patient) => ({
-        id: patient.id,
-        file_number: patient.file_number,
-        first_names: patient.first_names,
-        surname: patient.surname,
-        date_of_birth: patient.date_of_birth,
-        identity_type: patient.identity_type,
-        identity_last4: patient.identity_number ? patient.identity_number.slice(-4) : null,
-        phone: patient.phone,
-        status: patient.status,
-        duplicate_tier: "duplicate_tier" in patient ? patient.duplicate_tier : null,
-      }) satisfies PatientListItem)
-      .filter((patient) => !term
-        || [patient.file_number, patient.first_names, patient.surname, patient.identity_last4 ?? ""]
-          .join(" ")
-          .toLowerCase()
-          .includes(term)
-        || (phoneTerm.length > 0 && normalisePhone(patient.phone).includes(phoneTerm)));
-    const sorted = demoSorted(matches, sort, dir);
-    return {
-      patients: sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
-      total_count: sorted.length,
-    };
-  }
-
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("search_patients", {
     p_query: query,
@@ -73,11 +41,7 @@ async function getPatients(
   });
 
   if (error) throw new Error(`Unable to load patients: ${error.message}`);
-  const result = data as PatientSearchResult | null;
-  return {
-    patients: result?.patients ?? [],
-    total_count: Number(result?.total_count ?? 0),
-  };
+  return parseSearchResult(data);
 }
 
 function pageHref(query: string, page: number, sort?: SortColumn, dir?: SortDir): string {

@@ -1268,6 +1268,48 @@ textarea:focus-visible {
   font-size: 14px;
 }
 
+.auditTrailWrap {
+  padding-top: 0;
+  margin-top: -8px;
+}
+
+.auditTrail .fieldHelp {
+  margin-top: 0;
+  margin-bottom: 16px;
+}
+
+.auditList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+}
+
+.auditItem {
+  display: grid;
+  grid-template-columns: 160px 1fr;
+  gap: 12px;
+  padding: 12px 0;
+  border-top: 1px solid var(--border);
+}
+
+.auditItem:first-child {
+  border-top: none;
+  padding-top: 0;
+}
+
+.auditWhen {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.auditAction {
+  font-size: 14px;
+  font-weight: 600;
+}
+
 @media (max-width: 720px) {
   .appHeaderInner {
     grid-template-columns: auto auto;

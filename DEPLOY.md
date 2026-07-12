@@ -19,10 +19,10 @@ before the app will work.
 ## 2. Apply the migrations to the cloud database
 
 All migrations in `supabase/migrations/` must be applied, in order (as of
-2026-07-10 there are four; the two `20260710*` ones add the merge flow and
-weighted duplicate scoring). **Apply migrations before deploying new app
-code** — the old app works against the new schema, but not the other way
-round:
+2026-07-12 there are five; later ones add merge/scoring, then duplicate
+prefilter indexes and staff directory policy for audit). **Apply migrations
+before deploying new app code** — the old app works against the new schema,
+but not the other way round:
 
 ```bash
 supabase link --project-ref <your-project-ref>
@@ -60,7 +60,6 @@ NEXT_PUBLIC_SUPABASE_URL=https://<project-ref>.supabase.co
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
 ```
 
-- Do **not** set `DRRG_DEMO_MODE` (or set it to `false`).
 - **Never** put the secret key in a `NEXT_PUBLIC_*` variable. The app does not use the
   secret key; only the local `seed:*`/`verify:db` scripts do, and those are not run in
   production.
@@ -77,6 +76,8 @@ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
 - Open the archived record by its old URL → read-only "merged into" banner.
 - Flag another pair and choose **Different patients — keep both** → the pair
   leaves the queue and stays resolved after a reload.
+- Sign in as a **doctor** → open a patient → **Activity history** lists create /
+  update / merge events with staff names.
 
 (There is intentionally no way to delete a patient — records are retained
 per HPCSA guidance; merging archives the losing record.)

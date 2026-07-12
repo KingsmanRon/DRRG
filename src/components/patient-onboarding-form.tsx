@@ -3,7 +3,13 @@
 import Link from "next/link";
 import { useState, type FormEvent } from "react";
 import { CONSENT_TEXT, CONSENT_TEXT_HASH, CONSENT_VERSION } from "@/lib/consent";
-import { isValidSouthAfricanId } from "@/lib/patients/sa-id";
+import {
+  ConsentStep,
+  ContactDetailsStep,
+  IdentityStep,
+  PersonalDetailsStep,
+  fieldErrorsFromZod,
+} from "@/lib/patients/schema";
 import { WarningIcon } from "./icons";
 
 type IdentityType = "sa_id" | "passport" | "foreign_document" | "none";
@@ -85,52 +91,71 @@ export function PatientOnboardingForm() {
     }
   }
 
+  function identityPayload() {
+    return {
+      identity_type: draft.identity_type,
+      identity_number: draft.identity_type === "none" ? "" : draft.identity_number,
+      identity_country: ["passport", "foreign_document"].includes(draft.identity_type)
+        ? draft.identity_country.toUpperCase()
+        : "",
+      no_identity_reason: draft.identity_type === "none" ? draft.no_identity_reason : "",
+      date_of_birth: draft.date_of_birth || "1900-01-01",
+    };
+  }
+
   function validateCurrentStep(): boolean {
-    const next: Record<string, string> = {};
     if (step === 1) {
-      if (!draft.first_names.trim()) next.first_names = "First names are required.";
-      if (!draft.surname.trim()) next.surname = "Surname is required.";
-      if (!draft.date_of_birth) next.date_of_birth = "Date of birth is required.";
-      if (draft.date_of_birth && new Date(`${draft.date_of_birth}T00:00:00Z`) > new Date()) {
-        next.date_of_birth = "Date of birth cannot be in the future.";
+      const result = PersonalDetailsStep.safeParse({
+        file_number: draft.file_number,
+        first_names: draft.first_names,
+        surname: draft.surname,
+        date_of_birth: draft.date_of_birth,
+      });
+      if (!result.success) {
+        setErrors(fieldErrorsFromZod(result.error));
+        return false;
       }
     }
     if (step === 2) {
-      if (draft.identity_type === "sa_id" && !isValidSouthAfricanId(draft.identity_number)) {
-        next.identity_number = "Enter a valid South African ID number.";
-      }
-      if (["passport", "foreign_document"].includes(draft.identity_type)) {
-        if (draft.identity_number.trim().length < 3) next.identity_number = "Document number is required.";
-        if (!/^[A-Za-z]{2}$/.test(draft.identity_country)) next.identity_country = "Enter a two letter country code.";
-      }
-      if (draft.identity_type === "none" && draft.no_identity_reason.trim().length < 3) {
-        next.no_identity_reason = "Explain why no identity document is available.";
+      const result = IdentityStep.safeParse(identityPayload());
+      if (!result.success) {
+        setErrors(fieldErrorsFromZod(result.error));
+        return false;
       }
     }
     if (step === 3) {
-      const phoneDigits = draft.phone.replace(/\D/g, "").length;
-      if (!/^\+?[0-9 ()]{7,20}$/.test(draft.phone.trim()) || phoneDigits < 7 || phoneDigits > 15) {
-        next.phone = "Enter a valid mobile number.";
+      const result = ContactDetailsStep.safeParse({
+        phone: draft.phone,
+        email: draft.email,
+        residential_address: draft.residential_address,
+      });
+      if (!result.success) {
+        setErrors(fieldErrorsFromZod(result.error));
+        return false;
       }
-      if (draft.email && !/^\S+@\S+\.\S+$/.test(draft.email)) next.email = "Enter a valid email address.";
-      if (draft.residential_address.trim().length < 3) next.residential_address = "Residential address is required.";
     }
     if (step === 4) {
-      if (draft.signature_value.trim().length < 2) next.signature_value = "Enter the patient's full name as signature.";
-      if (!draft.patient_present_attestation) next.patient_present_attestation = "Confirm that the patient is present.";
-      if (candidates.length > 0 && !duplicatesReviewed) next.duplicate_reviewed = "Review the possible matches before saving.";
-      if (candidates.length > 0 && draft.duplicate_review_reason.trim().length < 5) {
-        next.duplicate_review_reason = "Record why this is a different patient.";
+      const result = ConsentStep.safeParse({
+        signature_value: draft.signature_value,
+        patient_present_attestation: draft.patient_present_attestation ? true : false,
+        duplicate_candidate_count: candidates.length,
+        duplicate_reviewed: duplicatesReviewed,
+        duplicate_review_reason: draft.duplicate_review_reason,
+      });
+      if (!result.success) {
+        setErrors(fieldErrorsFromZod(result.error));
+        return false;
       }
     }
-    setErrors(next);
-    return Object.keys(next).length === 0;
+    setErrors({});
+    return true;
   }
 
   async function checkDuplicates(): Promise<boolean> {
     setCheckingDuplicates(true);
     setFormError("");
     try {
+      const identity = identityPayload();
       const response = await fetch("/api/patients/duplicates", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -138,9 +163,9 @@ export function PatientOnboardingForm() {
           first_names: draft.first_names,
           surname: draft.surname,
           date_of_birth: draft.date_of_birth,
-          identity_type: draft.identity_type,
-          identity_number: draft.identity_number,
-          identity_country: draft.identity_country,
+          identity_type: identity.identity_type,
+          identity_number: identity.identity_number,
+          identity_country: identity.identity_country,
           phone: draft.phone,
           email: draft.email,
           residential_address: draft.residential_address,
@@ -184,17 +209,16 @@ export function PatientOnboardingForm() {
     setSubmitting(true);
     setFormError("");
 
+    const identity = identityPayload();
     const response = await fetch("/api/patients", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         ...draft,
         file_number: draft.file_number.trim(),
-        identity_country: ["passport", "foreign_document"].includes(draft.identity_type)
-          ? draft.identity_country.toUpperCase()
-          : "",
-        identity_number: draft.identity_type === "none" ? "" : draft.identity_number,
-        no_identity_reason: draft.identity_type === "none" ? draft.no_identity_reason : "",
+        identity_country: identity.identity_country,
+        identity_number: identity.identity_number,
+        no_identity_reason: identity.no_identity_reason,
         consent_version: CONSENT_VERSION,
         consent_text_hash: CONSENT_TEXT_HASH,
         signature_type: "typed_name",
@@ -206,6 +230,7 @@ export function PatientOnboardingForm() {
     setSubmitting(false);
 
     if (!response.ok) {
+      if (body.fields) setErrors(body.fields);
       if (response.status === 409 && body.code === "duplicate_review_required") {
         setDuplicatesReviewed(false);
         await checkDuplicates();
@@ -437,12 +462,5 @@ function DuplicateCandidateList({ candidates }: { candidates: Candidate[] }) {
 }
 
 function formatMatchReasons(reasons: string[]): string {
-  // Legacy underscore keys are kept for demo mode; the live RPC returns plain
-  // field names ("name", "date of birth", "phone", "email", "address").
-  const labels: Record<string, string> = {
-    same_name: "same name",
-    same_date_of_birth: "same date of birth",
-    same_phone: "same mobile number",
-  };
-  return reasons.map((reason) => labels[reason] ?? `same ${reason}`).join(", ");
+  return reasons.map((reason) => `same ${reason}`).join(", ");
 }

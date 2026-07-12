@@ -1,38 +1,26 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { mapPatientMutationError, validationErrorResponse } from "@/lib/api/errors";
+import { requireStaffApi } from "@/lib/auth/session";
 import { CONSENT_TEXT_HASH, CONSENT_VERSION } from "@/lib/consent";
-import { isDemoMode } from "@/lib/env";
 import { PatientInput, normalizePatientInput } from "@/lib/patients/schema";
 import { createClient } from "@/lib/supabase/server";
 
 export async function POST(request: NextRequest) {
+  const auth = await requireStaffApi();
+  if (auth.response) return auth.response;
+
   const parsed = PatientInput.safeParse(await request.json());
-  if (!parsed.success) {
-    const firstIssue = parsed.error.issues[0];
+  if (!parsed.success) return validationErrorResponse(parsed.error);
+
+  const input = normalizePatientInput(parsed.data);
+  if (input.consent_version !== CONSENT_VERSION || input.consent_text_hash !== CONSENT_TEXT_HASH) {
     return NextResponse.json(
-      {
-        error: firstIssue?.message ?? "Review the patient information.",
-        fields: parsed.error.flatten().fieldErrors,
-      },
+      { error: "The consent text has changed. Reload the form and capture consent again." },
       { status: 422 },
     );
   }
 
-  const input = normalizePatientInput(parsed.data);
-  if (input.consent_version !== CONSENT_VERSION || input.consent_text_hash !== CONSENT_TEXT_HASH) {
-    return NextResponse.json({ error: "The consent text has changed. Reload the form and capture consent again." }, { status: 422 });
-  }
-
-  if (isDemoMode()) {
-    return NextResponse.json(
-      { id: "f3bff3ca-8279-45a6-9350-dba990872d75", file_number: "DRRG00001257" },
-      { status: 201 },
-    );
-  }
-
   const supabase = await createClient();
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) return NextResponse.json({ error: "Not authenticated." }, { status: 401 });
-
   const { data, error } = await supabase.rpc("onboard_patient", {
     p_patient: {
       file_number: input.file_number,
@@ -58,25 +46,7 @@ export async function POST(request: NextRequest) {
     p_duplicate_review_reason: input.duplicate_review_reason,
   });
 
-  if (error) {
-    const text = `${error.message} ${error.details ?? ""}`.toLowerCase();
-    if (error.code === "23505" && text.includes("patients_file_number_key")) {
-      return NextResponse.json({ error: "That file number is already in use. Enter a different one or leave it blank to auto-generate." }, { status: 409 });
-    }
-    if (error.code === "23505" && text.includes("patients_unique_identity_idx")) {
-      return NextResponse.json({ error: "A patient with this identity already exists." }, { status: 409 });
-    }
-    if (error.code === "22023" && text.includes("soft_duplicate")) {
-      return NextResponse.json(
-        {
-          error: "Possible existing patients were found since this form was opened. Review the updated list before saving.",
-          code: "duplicate_review_required",
-        },
-        { status: 409 },
-      );
-    }
-    return NextResponse.json({ error: "The patient could not be saved." }, { status: 500 });
-  }
+  if (error) return mapPatientMutationError(error, "create");
 
   const row = Array.isArray(data) ? data[0] : data;
   if (!row?.patient_id || !row?.file_number) {

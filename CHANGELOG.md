@@ -1,5 +1,22 @@
 # Changelog
 
+## 2026-07-12 — Hardening: no demo mode, staff API gate, audit UI
+
+- **Removed demo mode** (`DRRG_DEMO_MODE`, `demo.ts`, and all fake-data branches).
+  The app always uses Supabase.
+- **API auth**: every patient API route uses `requireStaffApi()` (active
+  doctor/staff profile), not only `getUser()`.
+- **Proxy**: unauthenticated HTML routes redirect to `/login`; signed-in users
+  hitting `/login` go to `/patients`.
+- **Central PG → HTTP error mapping** in `src/lib/api/errors.ts`.
+- **Typed Supabase clients** via hand-maintained `database.types.ts`.
+- **Shared Zod step schemas** for onboarding + edit forms (same rules as the API).
+- **Duplicate detection prefilter + indexes** migration so registration scoring
+  does not scan every active patient.
+- **Doctor audit trail** on the patient page (activity history from `audit_events`).
+- **Profiles directory policy** so doctors can resolve other staff names on audit rows.
+- Scoring remains **Postgres as source of truth**; TS `scorePair` is contract tests + banner formatting only.
+
 ## 2026-07-10 — Duplicate handling & UX fixes
 
 ### Task 1 (P0): Merge flow replaces "Delete record"

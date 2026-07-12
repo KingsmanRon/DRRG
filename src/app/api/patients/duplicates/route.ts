@@ -1,8 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
-import { isDemoMode } from "@/lib/env";
-import { demoPatients } from "@/lib/patients/demo";
-import { normalisePhone } from "@/lib/patients/phone";
+import { mapPatientMutationError, validationErrorResponse } from "@/lib/api/errors";
+import { requireStaffApi } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 
 const DuplicateRequest = z.object({
@@ -22,44 +21,19 @@ function normalizeIdentityNumber(type: string, number: string): string {
 }
 
 export async function POST(request: NextRequest) {
+  const auth = await requireStaffApi();
+  if (auth.response) return auth.response;
+
   const parsed = DuplicateRequest.safeParse(await request.json());
   if (!parsed.success) {
-    return NextResponse.json({ error: "Complete the patient identity details before checking." }, { status: 422 });
+    return validationErrorResponse(parsed.error, "Complete the patient identity details before checking.");
   }
 
   const input = parsed.data;
   const identityNumber = normalizeIdentityNumber(input.identity_type, input.identity_number);
   const identityCountry = input.identity_country.trim().toUpperCase();
 
-  if (isDemoMode()) {
-    const exact = input.identity_type === "none"
-      ? undefined
-      : demoPatients.find((patient) => patient.identity_number === identityNumber);
-    if (exact) {
-      return NextResponse.json({ existing: { id: exact.id, file_number: exact.file_number } }, { status: 409 });
-    }
-
-    const surname = input.surname.trim().toLowerCase();
-    const candidates = demoPatients
-      .filter((patient) => patient.surname.toLowerCase() === surname || normalisePhone(patient.phone) === normalisePhone(input.phone))
-      .slice(0, 10)
-      .map((patient) => ({
-        id: patient.id,
-        file_number: patient.file_number,
-        first_names: patient.first_names,
-        surname: patient.surname,
-        date_of_birth: patient.date_of_birth,
-        phone: patient.phone,
-        identity_last4: patient.identity_number ? patient.identity_number.slice(-4) : null,
-        match_score: patient.surname.toLowerCase() === surname && patient.date_of_birth === input.date_of_birth ? 85 : 55,
-        match_reasons: ["same_surname", "same_date_of_birth"],
-      }));
-    return NextResponse.json({ candidates });
-  }
-
   const supabase = await createClient();
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) return NextResponse.json({ error: "Not authenticated." }, { status: 401 });
 
   if (input.identity_type !== "none" && identityNumber) {
     let exactQuery = supabase
@@ -67,11 +41,12 @@ export async function POST(request: NextRequest) {
       .select("id, file_number")
       .eq("identity_type", input.identity_type)
       .eq("identity_number", identityNumber)
+      .eq("status", "active")
       .limit(1);
     if (input.identity_type !== "sa_id") exactQuery = exactQuery.eq("identity_country", identityCountry);
 
     const { data: exactMatches, error: exactError } = await exactQuery;
-    if (exactError) return NextResponse.json({ error: "Unable to check identity duplicates." }, { status: 500 });
+    if (exactError) return mapPatientMutationError(exactError, "duplicates");
     if (exactMatches?.[0]) return NextResponse.json({ existing: exactMatches[0] }, { status: 409 });
   }
 
@@ -85,6 +60,6 @@ export async function POST(request: NextRequest) {
     p_address: input.residential_address,
   });
 
-  if (error) return NextResponse.json({ error: "Unable to check possible duplicates." }, { status: 500 });
+  if (error) return mapPatientMutationError(error, "duplicates");
   return NextResponse.json({ candidates: candidates ?? [] });
 }

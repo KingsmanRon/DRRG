@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Fragment, useEffect, useRef, useState } from "react";
-import { matchBanner, tierLabel, type DuplicateTier } from "@/lib/patients/duplicate-score";
+import { matchBanner, type DuplicateTier } from "@/lib/patients/duplicate-score";
 import { WarningIcon } from "./icons";
 
 type Side = {

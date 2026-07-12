@@ -9,7 +9,7 @@ An internal patient onboarding and register application for Dr Refiloe G's cash 
 3. South African ID, passport, other foreign document and no document support.
 4. Exact identity duplicate blocking.
 5. Soft duplicate review using name, date of birth and phone.
-6. Patient search, consent capture and audit history.
+6. Patient search, consent capture and audit history (doctors see activity on each file).
 
 Clinical notes, billing and medical aid workflows are deliberately excluded.
 
@@ -37,7 +37,11 @@ South African mobile numbers are normalised so local `082...` and international 
 
 Patient records are never hard deleted (HPCSA requires clinical records to be retained). Merging archives the losing record and keeps it queryable for audit.
 
-## Local setup (real database)
+Scoring for production decisions runs in Postgres (`private.duplicate_match` /
+`find_possible_duplicates`). The TypeScript helpers in `src/lib/patients/duplicate-score.ts`
+format UI banners and lock the weight/tier contract with unit tests.
+
+## Local setup
 
 The app runs end-to-end against a local Supabase stack. Docker Desktop must be running.
 
@@ -49,15 +53,14 @@ The app runs end-to-end against a local Supabase stack. Docker Desktop must be r
    - `NEXT_PUBLIC_SUPABASE_URL` / `SUPABASE_URL` = the API URL (e.g. `http://127.0.0.1:54321`)
    - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` / `SUPABASE_PUBLISHABLE_KEY` = the publishable key
    - `SUPABASE_SECRET_KEY` = the secret key (server-only; used by the seed/verify scripts)
-   - `DRRG_DEMO_MODE=false`
 5. Apply migrations and seed data: `npx supabase db reset`.
 6. Create a local staff login: `npm run seed:local:staff`
    (defaults to `doctor@drrg.local` / `LocalTest123!`).
-7. Run `npm run dev` and sign in at `/login`.
+7. Optionally seed sample patients: `npm run seed:local:patients`.
+8. Run `npm run dev` and sign in at `/login`.
 
-Useful checks: `npm run verify:db` (exercises the onboarding/duplicate RPCs) and
-`npm run test` (unit tests). When hosting on Supabase Cloud later, point the same
-environment variables at the cloud project and apply the migrations there.
+Useful checks: `npm run verify:db` (onboarding/duplicate RPCs), `npm run verify:merge`
+(merge flow), and `npm run test` (unit tests). When hosting on Supabase Cloud later,
+point the same environment variables at the cloud project and apply the migrations there.
 
-The legacy `DRRG_DEMO_MODE=true` fake-data mode is deprecated and off by default; the
-app now uses the real database for all screens.
+There is no demo/fake-data mode — all screens use the real database.

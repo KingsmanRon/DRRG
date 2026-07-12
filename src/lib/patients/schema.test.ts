@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { normalisePhone } from "./phone";
-import { PatientInput, normalizePatientInput } from "./schema";
+import {
+  ContactDetailsStep,
+  PersonalDetailsStep,
+  PatientInput,
+  fieldErrorsFromZod,
+  normalizePatientInput,
+} from "./schema";
 
 const base = {
   first_names: "Nomsa Thandi",
@@ -70,5 +76,31 @@ describe("PatientInput", () => {
   it("rejects a phone number with more digits than the database allows", () => {
     const result = PatientInput.safeParse({ ...base, phone: "0821234567890123" });
     expect(result.success).toBe(false);
+  });
+});
+
+describe("onboarding step schemas", () => {
+  it("accepts personal details that match the full PatientInput rules", () => {
+    const result = PersonalDetailsStep.safeParse({
+      file_number: "",
+      first_names: base.first_names,
+      surname: base.surname,
+      date_of_birth: base.date_of_birth,
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("surfaces field errors for contact validation", () => {
+    const result = ContactDetailsStep.safeParse({
+      phone: "bad",
+      email: "not-an-email",
+      residential_address: "x",
+    });
+    expect(result.success).toBe(false);
+    if (result.success) return;
+    const fields = fieldErrorsFromZod(result.error);
+    expect(fields.phone).toBeTruthy();
+    expect(fields.email).toBeTruthy();
+    expect(fields.residential_address).toBeTruthy();
   });
 });

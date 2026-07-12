@@ -49,16 +49,20 @@ type PatientCore = {
   no_identity_reason: string;
 };
 
-/** Identity/date validation shared by onboarding and editing. */
-function refinePatientCore(value: PatientCore, context: z.RefinementCtx) {
-  const birthDate = new Date(`${value.date_of_birth}T00:00:00Z`);
-  if (birthDate > new Date()) {
+function refineDateOfBirth(dateOfBirth: string, context: z.RefinementCtx) {
+  const birthDate = new Date(`${dateOfBirth}T00:00:00Z`);
+  if (Number.isNaN(birthDate.getTime()) || birthDate > new Date()) {
     context.addIssue({
       code: "custom",
       path: ["date_of_birth"],
       message: "Date of birth cannot be in the future.",
     });
   }
+}
+
+/** Identity/date validation shared by onboarding and editing. */
+function refinePatientCore(value: PatientCore, context: z.RefinementCtx) {
+  refineDateOfBirth(value.date_of_birth, context);
 
   if (value.identity_type === "none") {
     if (value.identity_number || value.identity_country) {
@@ -122,7 +126,9 @@ export const PatientInput = z
     consent_text_hash: z.string().regex(/^[a-f0-9]{64}$/),
     signature_type: z.enum(["typed_name", "drawn_signature"]),
     signature_value: z.string().trim().min(2, "A signature is required.").max(500),
-    patient_present_attestation: z.literal(true),
+    patient_present_attestation: z
+      .boolean()
+      .refine((value) => value === true, "Confirm that the patient is present."),
     duplicate_reviewed: z.boolean().default(false),
     duplicate_candidate_ids: z.array(z.uuid()).max(10).default([]),
     duplicate_review_reason: z.string().trim().max(500).default(""),
@@ -160,13 +166,93 @@ export const PatientUpdate = z
 
 export type PatientUpdate = z.infer<typeof PatientUpdate>;
 
-function normalizeCore<T extends PatientCore & {
-  first_names: string;
-  surname: string;
-  phone: string;
-  email: string;
-  residential_address: string;
-}>(input: T): T {
+// --- Step schemas for the multi-step onboarding wizard (same rules as PatientInput) ---
+
+export const PersonalDetailsStep = z
+  .object({
+    file_number: z.string().trim().max(40).default(""),
+    first_names: patientCoreShape.first_names,
+    surname: patientCoreShape.surname,
+    date_of_birth: patientCoreShape.date_of_birth,
+  })
+  .superRefine((value, context) => refineDateOfBirth(value.date_of_birth, context));
+
+export const IdentityStep = z
+  .object({
+    identity_type: patientCoreShape.identity_type,
+    identity_number: patientCoreShape.identity_number,
+    identity_country: patientCoreShape.identity_country,
+    no_identity_reason: patientCoreShape.no_identity_reason,
+    // date_of_birth not needed for identity refine except DOB checks already done
+    date_of_birth: z.iso.date().optional().default("1900-01-01"),
+  })
+  .superRefine((value, context) => {
+    refinePatientCore(
+      {
+        date_of_birth: value.date_of_birth,
+        identity_type: value.identity_type,
+        identity_number: value.identity_number,
+        identity_country: value.identity_country,
+        no_identity_reason: value.no_identity_reason,
+      },
+      context,
+    );
+  });
+
+export const ContactDetailsStep = z.object({
+  phone: patientCoreShape.phone,
+  email: patientCoreShape.email,
+  residential_address: patientCoreShape.residential_address,
+});
+
+export const ConsentStep = z
+  .object({
+    signature_value: z.string().trim().min(2, "Enter the patient's full name as signature.").max(500),
+    patient_present_attestation: z
+      .boolean()
+      .refine((value) => value === true, "Confirm that the patient is present."),
+    duplicate_candidate_count: z.number().int().min(0).default(0),
+    duplicate_reviewed: z.boolean().default(false),
+    duplicate_review_reason: z.string().trim().max(500).default(""),
+  })
+  .superRefine((value, context) => {
+    if (value.duplicate_candidate_count > 0) {
+      if (!value.duplicate_reviewed) {
+        context.addIssue({
+          code: "custom",
+          path: ["duplicate_reviewed"],
+          message: "Review the possible matches before saving.",
+        });
+      }
+      if (value.duplicate_review_reason.length < 5) {
+        context.addIssue({
+          code: "custom",
+          path: ["duplicate_review_reason"],
+          message: "Record why this is a different patient.",
+        });
+      }
+    }
+  });
+
+/** Flatten Zod issues to a single message per field for form UIs (client + server). */
+export function fieldErrorsFromZod(error: z.ZodError): Record<string, string> {
+  const fields: Record<string, string> = {};
+  for (const issue of error.issues) {
+    const key = issue.path.length > 0 ? String(issue.path[0]) : "_form";
+    if (!fields[key]) fields[key] = issue.message;
+  }
+  return fields;
+}
+
+function normalizeCore<
+  T extends PatientCore & {
+    first_names: string;
+    surname: string;
+    phone: string;
+    email: string;
+    residential_address: string;
+  },
+>(input: T): T {
   return {
     ...input,
     first_names: input.first_names.trim(),

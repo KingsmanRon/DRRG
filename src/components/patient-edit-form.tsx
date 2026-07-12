@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
-import { isValidSouthAfricanId } from "@/lib/patients/sa-id";
+import { PatientUpdate, fieldErrorsFromZod } from "@/lib/patients/schema";
 import { WarningIcon } from "./icons";
 
 type IdentityType = "sa_id" | "passport" | "foreign_document" | "none";
@@ -87,33 +87,32 @@ export function PatientEditForm({
     setSaved(false);
   }
 
+  function payload() {
+    return {
+      file_number: draft.file_number.trim(),
+      first_names: draft.first_names,
+      surname: draft.surname,
+      date_of_birth: draft.date_of_birth,
+      identity_type: draft.identity_type,
+      identity_number: draft.identity_type === "none" ? "" : draft.identity_number,
+      identity_country: ["passport", "foreign_document"].includes(draft.identity_type)
+        ? draft.identity_country.toUpperCase()
+        : "",
+      no_identity_reason: draft.identity_type === "none" ? draft.no_identity_reason : "",
+      phone: draft.phone,
+      email: draft.email,
+      residential_address: draft.residential_address,
+    };
+  }
+
   function validate(): boolean {
-    const next: Record<string, string> = {};
-    if (!draft.file_number.trim()) next.file_number = "File number is required.";
-    if (!draft.first_names.trim()) next.first_names = "First names are required.";
-    if (!draft.surname.trim()) next.surname = "Surname is required.";
-    if (!draft.date_of_birth) next.date_of_birth = "Date of birth is required.";
-    if (draft.date_of_birth && new Date(`${draft.date_of_birth}T00:00:00Z`) > new Date()) {
-      next.date_of_birth = "Date of birth cannot be in the future.";
+    const result = PatientUpdate.safeParse(payload());
+    if (!result.success) {
+      setErrors(fieldErrorsFromZod(result.error));
+      return false;
     }
-    if (draft.identity_type === "sa_id" && !isValidSouthAfricanId(draft.identity_number)) {
-      next.identity_number = "Enter a valid South African ID number.";
-    }
-    if (["passport", "foreign_document"].includes(draft.identity_type)) {
-      if (draft.identity_number.trim().length < 3) next.identity_number = "Document number is required.";
-      if (!/^[A-Za-z]{2}$/.test(draft.identity_country)) next.identity_country = "Enter a two letter country code.";
-    }
-    if (draft.identity_type === "none" && draft.no_identity_reason.trim().length < 3) {
-      next.no_identity_reason = "Explain why no identity document is available.";
-    }
-    const phoneDigits = draft.phone.replace(/\D/g, "").length;
-    if (!/^\+?[0-9 ()]{7,20}$/.test(draft.phone.trim()) || phoneDigits < 7 || phoneDigits > 15) {
-      next.phone = "Enter a valid mobile number.";
-    }
-    if (draft.email && !/^\S+@\S+\.\S+$/.test(draft.email)) next.email = "Enter a valid email address.";
-    if (draft.residential_address.trim().length < 3) next.residential_address = "Residential address is required.";
-    setErrors(next);
-    return Object.keys(next).length === 0;
+    setErrors({});
+    return true;
   }
 
   async function save(event: FormEvent<HTMLFormElement>) {
@@ -126,21 +125,7 @@ export function PatientEditForm({
     const response = await fetch(`/api/patients/${patient.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        file_number: draft.file_number.trim(),
-        first_names: draft.first_names,
-        surname: draft.surname,
-        date_of_birth: draft.date_of_birth,
-        identity_type: draft.identity_type,
-        identity_number: draft.identity_type === "none" ? "" : draft.identity_number,
-        identity_country: ["passport", "foreign_document"].includes(draft.identity_type)
-          ? draft.identity_country.toUpperCase()
-          : "",
-        no_identity_reason: draft.identity_type === "none" ? draft.no_identity_reason : "",
-        phone: draft.phone,
-        email: draft.email,
-        residential_address: draft.residential_address,
-      }),
+      body: JSON.stringify(payload()),
     });
     const body = await response.json().catch(() => ({}));
     setSaving(false);

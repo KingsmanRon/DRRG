@@ -1,34 +1,26 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
+import { mapPatientMutationError, validationErrorResponse } from "@/lib/api/errors";
+import { requireStaffApi } from "@/lib/auth/session";
 import { PatientUpdate, normalizePatientUpdate } from "@/lib/patients/schema";
 import { createClient } from "@/lib/supabase/server";
 
 const idSchema = z.uuid();
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const auth = await requireStaffApi();
+  if (auth.response) return auth.response;
+
   const { id } = await params;
   if (!idSchema.safeParse(id).success) {
     return NextResponse.json({ error: "Invalid patient reference." }, { status: 400 });
   }
 
   const parsed = PatientUpdate.safeParse(await request.json());
-  if (!parsed.success) {
-    const firstIssue = parsed.error.issues[0];
-    return NextResponse.json(
-      {
-        error: firstIssue?.message ?? "Review the patient information.",
-        fields: parsed.error.flatten().fieldErrors,
-      },
-      { status: 422 },
-    );
-  }
+  if (!parsed.success) return validationErrorResponse(parsed.error);
 
   const input = normalizePatientUpdate(parsed.data);
-
   const supabase = await createClient();
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) return NextResponse.json({ error: "Not authenticated." }, { status: 401 });
-
   const { data, error } = await supabase.rpc("update_patient", {
     p_id: id,
     p_patient: {
@@ -46,25 +38,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     },
   });
 
-  if (error) {
-    const text = `${error.message} ${error.details ?? ""}`.toLowerCase();
-    if (error.code === "23505" && text.includes("patients_file_number_key")) {
-      return NextResponse.json({ error: "That file number is already in use by another patient." }, { status: 409 });
-    }
-    if (error.code === "23505" && text.includes("patients_unique_identity_idx")) {
-      return NextResponse.json({ error: "Another patient already has this identity number." }, { status: 409 });
-    }
-    if (error.code === "P0002") {
-      return NextResponse.json({ error: "This patient no longer exists." }, { status: 404 });
-    }
-    if (error.code === "55000") {
-      return NextResponse.json(
-        { error: "This record was merged into another patient file and is read only." },
-        { status: 409 },
-      );
-    }
-    return NextResponse.json({ error: "The patient could not be updated." }, { status: 500 });
-  }
+  if (error) return mapPatientMutationError(error, "update");
 
   const row = Array.isArray(data) ? data[0] : data;
   return NextResponse.json({ id: row?.patient_id ?? id, file_number: row?.file_number }, { status: 200 });

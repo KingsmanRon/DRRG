@@ -1,6 +1,3 @@
-export function isDemoMode(): boolean {
-  return process.env.DRRG_DEMO_MODE === "true" && process.env.NODE_ENV !== "production";
-}
 export function hasSupabaseEnvironment(): boolean {
   return Boolean(
     process.env.NEXT_PUBLIC_SUPABASE_URL &&

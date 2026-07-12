@@ -1,20 +1,27 @@
 import { normalisePhone } from "./phone";
 
-// Weighted duplicate scoring. Mirrors private.duplicate_match in the database
-// (supabase/migrations/20260710090500_merge_and_scoring_functions.sql) — keep
-// the weights and tier rules in sync.
-//
-//   identity document match  -> decisive: always "likely"
-//   full name match          +3
-//   date of birth match      +3
-//   email match              +2
-//   phone match              +1
-//   address match            +1
-//
-// Tiers: likely  = identity match, or name + date of birth, or score >= 6
-//        possible = score 2..5 across AT LEAST TWO matching fields.
-// A single non-identity field alone never flags — a lone date-of-birth or
-// email match would otherwise flag every patient born on the same day.
+/**
+ * Weighted duplicate scoring — presentation helpers + algorithm contract tests.
+ *
+ * **Source of truth for production scoring is Postgres**
+ * (`private.duplicate_match` in supabase/migrations/*_merge_and_scoring_functions.sql
+ * and the prefilter rewrite of `find_possible_duplicates`).
+ *
+ * Live UI banners use server-returned `match_score` / `match_tier` / `match_reasons`.
+ * `scorePair` exists so unit tests lock the weight/tier contract; do not re-score
+ * patients in the client for business decisions.
+ *
+ * Weights:
+ *   identity document match  -> decisive: always "likely"
+ *   full name match          +3
+ *   date of birth match      +3
+ *   email match              +2
+ *   phone match              +1
+ *   address match            +1
+ *
+ * Tiers: likely  = identity match, or name + date of birth, or score >= 6
+ *        possible = score 2..5 across AT LEAST TWO matching fields.
+ */
 
 export type MatchSide = {
   first_names: string;
@@ -34,7 +41,7 @@ export type MatchResult = {
 };
 
 function stripDiacritics(value: string): string {
-  return value.normalize("NFKD").replace(/[̀-ͯ]/g, "");
+  return value.normalize("NFKD").replace(/[\u0300-\u036f]/g, "");
 }
 
 export function normaliseName(value: string): string {
@@ -45,6 +52,7 @@ export function normaliseAddress(value: string): string {
   return stripDiacritics(value).toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 }
 
+/** Algorithm contract (tests only). Production scoring runs in SQL. */
 export function scorePair(a: MatchSide, b: MatchSide, identityMatch = false): MatchResult {
   const sameName =
     normaliseName(a.first_names) === normaliseName(b.first_names) &&
@@ -81,7 +89,7 @@ export function scorePair(a: MatchSide, b: MatchSide, identityMatch = false): Ma
 }
 
 export function tierLabel(tier: DuplicateTier): string {
-  return tier === "likely" ? "Likely duplicate" : "Possible duplicate";
+  return tier === "likely" ? "Likely duplicate" : tier === "possible" ? "Possible duplicate" : "No match";
 }
 
 function humanJoin(items: string[]): string {
@@ -90,11 +98,12 @@ function humanJoin(items: string[]): string {
   return `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`;
 }
 
-/** Banner copy: "Likely duplicate — same name, date of birth and address". */
-export function matchBanner(result: MatchResult): string {
+/** Banner copy from server-provided score payload: "Likely duplicate — same name, date of birth and address". */
+export function matchBanner(result: Pick<MatchResult, "tier" | "reasons"> & { score?: number }): string {
+  const label = tierLabel(result.tier === "none" ? "possible" : result.tier);
   return result.reasons.length
-    ? `${tierLabel(result.tier)} — same ${humanJoin(result.reasons)}`
-    : `${tierLabel(result.tier)} — matching details found during registration`;
+    ? `${label} — same ${humanJoin(result.reasons)}`
+    : `${label} — matching details found during registration`;
 }
 
 type FingerprintSide = MatchSide & {
@@ -117,9 +126,11 @@ function sideFingerprint(side: FingerprintSide): string {
   ].join("|");
 }
 
-// Order-insensitive fingerprint of the matched fields of a pair. A "keep both"
-// dismissal stores this; if it no longer matches, the pair is re-evaluated.
-// Mirrors private.pair_match_fingerprint in the database.
+/**
+ * Order-insensitive fingerprint of matched fields for unit tests.
+ * Production keep-both fingerprints are MD5'd in SQL (`private.pair_match_fingerprint`).
+ * Equality of this helper tracks field changes the same way the DB re-opens pairs.
+ */
 export function pairMatchFingerprint(a: FingerprintSide, b: FingerprintSide): string {
   const [first, second] = [sideFingerprint(a), sideFingerprint(b)].sort();
   return `${first}||${second}`;
