@@ -76,6 +76,10 @@ export function PatientEditForm({
   const [formError, setFormError] = useState("");
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [showArchive, setShowArchive] = useState(false);
+  const [archiveReason, setArchiveReason] = useState("");
+  const [archiveError, setArchiveError] = useState("");
+  const [archiving, setArchiving] = useState(false);
 
   function update<K extends keyof Draft>(field: K, value: Draft[K]) {
     setDraft((current) => ({ ...current, [field]: value }));
@@ -138,6 +142,29 @@ export function PatientEditForm({
     setSaved(true);
     router.refresh();
     window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  async function archivePatient() {
+    const reason = archiveReason.trim();
+    if (reason.length < 5) {
+      setArchiveError("Record why this file is being archived (at least 5 characters).");
+      return;
+    }
+    setArchiving(true);
+    setArchiveError("");
+    const response = await fetch(`/api/patients/${patient.id}/archive`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ reason }),
+    });
+    const body = await response.json().catch(() => ({}));
+    setArchiving(false);
+    if (!response.ok) {
+      setArchiveError(body.error ?? "The patient could not be archived.");
+      return;
+    }
+    router.replace(`/patients/${patient.id}`);
+    router.refresh();
   }
 
   return (
@@ -247,13 +274,77 @@ export function PatientEditForm({
           </div>
         </section>
 
-        {/* Patient records are never hard deleted (HPCSA retention). A genuine
-            duplicate is cleaned up by merging it on the duplicates page. */}
+        {/* Soft archive only — never hard delete (HPCSA). Same-person duplicates
+            should still be merged on the duplicates page. */}
+        <section className="formPanel dangerZone">
+          <h2 className="formPanelHeader">Archive this file</h2>
+          <div className="formPanelBody">
+            <p className="fieldHelp">
+              Use this when the file was registered in error or should leave the active register.
+              The record is kept for audit and is not deleted. If this is the same person as another
+              file, merge them on Possible duplicates instead.
+            </p>
+            {!showArchive ? (
+              <button
+                type="button"
+                className="button buttonSecondary"
+                onClick={() => {
+                  setShowArchive(true);
+                  setArchiveError("");
+                }}
+              >
+                Archive patient file
+              </button>
+            ) : (
+              <div className="archiveConfirmPanel">
+                <div className="formField">
+                  <label htmlFor="archive_reason">
+                    Reason for archiving <span className="required">*</span>
+                  </label>
+                  <textarea
+                    id="archive_reason"
+                    value={archiveReason}
+                    onChange={(event) => {
+                      setArchiveReason(event.target.value);
+                      setArchiveError("");
+                    }}
+                    placeholder="For example, registered in error, test patient, wrong person"
+                  />
+                  <FieldError message={archiveError} />
+                </div>
+                <div className="dangerActions">
+                  <button
+                    type="button"
+                    className="button buttonSecondary"
+                    disabled={archiving}
+                    onClick={() => {
+                      setShowArchive(false);
+                      setArchiveReason("");
+                      setArchiveError("");
+                    }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    className="button buttonDanger"
+                    disabled={archiving}
+                    onClick={archivePatient}
+                  >
+                    {archiving ? "Archiving" : "Confirm archive"}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </section>
       </main>
 
       <div className="formActions">
         <Link className="button buttonSecondary" href="/patients">Cancel</Link>
-        <button className="button buttonPrimary" type="submit" disabled={saving}>{saving ? "Saving" : "Save changes"}</button>
+        <button className="button buttonPrimary" type="submit" disabled={saving || archiving}>
+          {saving ? "Saving" : "Save changes"}
+        </button>
       </div>
     </form>
   );

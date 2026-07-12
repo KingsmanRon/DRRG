@@ -5,6 +5,7 @@ const ACTION_LABELS: Record<string, string> = {
   patient_created: "Patient registered",
   patient_updated: "Patient details updated",
   patient_archived: "Record archived",
+  patient_restored: "Record restored to active register",
   patient_merged: "Duplicate merged into this file",
   patient_deleted: "Patient deleted (legacy)",
   duplicate_reviewed: "Soft duplicate reviewed at registration",
@@ -36,7 +37,13 @@ function formatMetadata(action: string, metadata: Json): string {
       : typeof meta.survivor_file_number === "string"
         ? meta.survivor_file_number
         : null;
-    return into ? `${base} (merged into ${into})` : base;
+    if (into) return `${base} (merged into ${into})`;
+    if (typeof meta.reason === "string") return `${base}: ${meta.reason}`;
+    return base;
+  }
+
+  if (action === "patient_restored") {
+    return base;
   }
 
   if (action === "duplicate_resolved" && typeof meta.reason === "string") {

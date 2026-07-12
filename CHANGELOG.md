@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-07-12 — Standalone archive and restore
+
+- **Archive patient file** on the edit page (any active staff): soft-archives with a
+  required reason. Row, consent and audit are kept; the file leaves search/lists and
+  open duplicate pairs involving it are closed as “not a duplicate”.
+- **Restore** (doctor only) on manually archived files that were **not** merged.
+  Merged archives stay read-only and still link to the kept record.
+- RPCs: `archive_patient`, `restore_patient`. Audit actions include `patient_restored`
+  and manual `patient_archived` with reason metadata.
+
 ## 2026-07-12 — Hardening: no demo mode, staff API gate, audit UI
 
 - **Removed demo mode** (`DRRG_DEMO_MODE`, `demo.ts`, and all fake-data branches).

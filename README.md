@@ -35,7 +35,7 @@ The system uses two levels of duplicate protection.
 
 South African mobile numbers are normalised so local `082...` and international `+27 82...` formats match one another. Names and addresses are compared ignoring case, punctuation and accents.
 
-Patient records are never hard deleted (HPCSA requires clinical records to be retained). Merging archives the losing record and keeps it queryable for audit.
+Patient records are never hard deleted (HPCSA requires clinical records to be retained). Merging archives the losing record and keeps it queryable for audit. Staff can also **archive** a single file that was registered in error (with a reason); **doctors** can **restore** manually archived files. Records archived by a merge cannot be restored — open the kept file instead.
 
 Scoring for production decisions runs in Postgres (`private.duplicate_match` /
 `find_possible_duplicates`). The TypeScript helpers in `src/lib/patients/duplicate-score.ts`

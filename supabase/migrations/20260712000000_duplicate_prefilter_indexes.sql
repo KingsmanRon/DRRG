@@ -2,9 +2,15 @@
 -- before scoring, and add partial indexes for the common match keys.
 -- Scoring weights/tiers are unchanged (still private.duplicate_match).
 -- Also: staff directory read so doctor audit trail can show actor names.
+--
+-- Note: do not index on private.normalise_name(...) — Postgres requires index
+-- expressions to use IMMUTABLE builtins (or functions proven immutable). Name
+-- prefilter is served by lower(surname)/lower(first_names) plus the existing
+-- patients_name_dob_idx.
 
 -- Active staff may read other staff profiles (display name / role) for audit UI.
 -- Own-row policy already exists; policies OR together under RLS.
+drop policy if exists profiles_select_active_staff_directory on public.profiles;
 create policy profiles_select_active_staff_directory
 on public.profiles for select
 to authenticated
@@ -18,12 +24,15 @@ create index if not exists patients_active_phone_idx
   on public.patients (phone_normalized)
   where status = 'active';
 
+-- Index the email column directly (equality after lower() in the query still
+-- benefits from this for small staff datasets; avoids collation/immutability
+-- edge cases with lower() expression indexes on some Postgres builds).
 create index if not exists patients_active_email_idx
-  on public.patients (lower(email))
+  on public.patients (email)
   where status = 'active' and email is not null;
 
 create index if not exists patients_active_name_idx
-  on public.patients (private.normalise_name(surname), private.normalise_name(first_names))
+  on public.patients (lower(surname), lower(first_names))
   where status = 'active';
 
 create or replace function public.find_possible_duplicates(

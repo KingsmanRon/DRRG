@@ -25,12 +25,18 @@ type PgLikeError = {
  */
 export function mapPatientMutationError(
   error: PgLikeError,
-  context: "create" | "update" | "merge" | "resolve" | "duplicates" = "update",
+  context: "create" | "update" | "merge" | "resolve" | "duplicates" | "archive" | "restore" = "update",
 ): NextResponse {
   const code = error.code ?? "";
   const text = `${error.message ?? ""} ${error.details ?? ""}`.toLowerCase();
 
   if (code === "42501") {
+    if (context === "restore" || text.includes("doctor")) {
+      return NextResponse.json(
+        { error: "Only a doctor can restore an archived patient file." },
+        { status: 403 },
+      );
+    }
     return NextResponse.json({ error: "Staff access required." }, { status: 403 });
   }
 
@@ -81,10 +87,32 @@ export function mapPatientMutationError(
     return NextResponse.json({ error: "This patient no longer exists." }, { status: 404 });
   }
 
+  if (code === "22023" && context === "restore") {
+    return NextResponse.json(
+      { error: "Only archived records can be restored." },
+      { status: 409 },
+    );
+  }
+
   if (code === "55000") {
     if (context === "merge") {
       return NextResponse.json(
         { error: "This pair was already resolved by someone else. Refresh to see the current queue." },
+        { status: 409 },
+      );
+    }
+    if (context === "archive") {
+      return NextResponse.json(
+        { error: "This record is already archived." },
+        { status: 409 },
+      );
+    }
+    if (context === "restore" || text.includes("merged")) {
+      return NextResponse.json(
+        {
+          error:
+            "This record was merged into another patient file and cannot be restored. Open the kept file instead.",
+        },
         { status: 409 },
       );
     }
@@ -103,7 +131,11 @@ export function mapPatientMutationError(
           ? "The duplicate could not be resolved."
           : context === "duplicates"
             ? "Unable to check possible duplicates."
-            : "The patient could not be updated.";
+            : context === "archive"
+              ? "The patient could not be archived."
+              : context === "restore"
+                ? "The patient could not be restored."
+                : "The patient could not be updated.";
 
   return NextResponse.json({ error: fallback }, { status: 500 });
 }
