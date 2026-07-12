@@ -824,9 +824,12 @@ textarea:focus-visible {
   text-align: center;
 }
 
-.practiceFooter .practiceName {
-  font-size: 0.95rem;
-  margin-bottom: 4px;
+.practiceFooterLogo {
+  display: block;
+  height: 40px;
+  width: auto;
+  margin: 0 auto 10px;
+  object-fit: contain;
 }
 
 .practiceFooter .practiceDoctor,

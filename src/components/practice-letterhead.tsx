@@ -1,4 +1,6 @@
+import Image from "next/image";
 import { practice } from "@/lib/practice";
+import logo from "../../public/logo.png";
 
 type Variant = "full" | "footer";
 
@@ -7,7 +9,12 @@ export function PracticeLetterhead({ variant = "full" }: { variant?: Variant }) 
     return (
       <footer className="practiceFooter" aria-label="Practice contact details">
         <div className="practiceFooterInner">
-          <p className="practiceName">{practice.tradingName}</p>
+          <Image
+            className="practiceFooterLogo"
+            src={logo}
+            alt={practice.tradingName}
+            priority={false}
+          />
           <p className="practiceDoctor">
             {practice.doctorName}{" "}
             <span className="practiceQuals">{practice.qualifications}</span>
