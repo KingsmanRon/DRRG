@@ -700,12 +700,13 @@ textarea:focus-visible {
   max-height: calc(100dvh - 56px);
   min-height: min(680px, calc(100vh - 56px));
   display: grid;
-  /* Slightly wider image column so landscape photo is less aggressively cropped */
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+  /* Wider image column + contain framing shows more of the landscape photo */
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
   border-radius: 12px;
   overflow: hidden;
   background: #ffffff;
   border: 1px solid var(--border);
+  border-top: 4px solid var(--green);
   box-shadow: 0 10px 32px rgba(20, 42, 32, 0.08);
 }
 
@@ -717,10 +718,9 @@ textarea:focus-visible {
 }
 
 .loginImage {
-  object-fit: cover;
-  /* Show more of the scene; bias slightly toward the desk/stethoscope */
-  object-position: center 42%;
-  /* Prefer crisp resampling */
+  /* Zoom out: show the full photo rather than a tight cover crop */
+  object-fit: contain;
+  object-position: center center;
   image-rendering: auto;
 }
 
@@ -728,12 +728,11 @@ textarea:focus-visible {
   position: absolute;
   inset: 0;
   z-index: 1;
-  /* Lighter scrim so photo detail stays visible */
   background: linear-gradient(
     180deg,
-    rgba(4, 53, 37, 0.28) 0%,
-    rgba(4, 53, 37, 0.12) 45%,
-    rgba(4, 53, 37, 0.3) 100%
+    rgba(4, 53, 37, 0.22) 0%,
+    rgba(4, 53, 37, 0.08) 50%,
+    rgba(4, 53, 37, 0.24) 100%
   );
   pointer-events: none;
 }
@@ -1902,7 +1901,7 @@ textarea:focus-visible {
     padding: 18px 24px 16px;
     border-bottom: 1px solid var(--border);
     background: linear-gradient(180deg, var(--green-soft) 0%, #ffffff 100%);
-    border-top: 3px solid var(--green);
+    /* Shell already has green top line; keep a soft brand cue here without a second bar */
   }
 
   .loginMobileBrandLogo {
