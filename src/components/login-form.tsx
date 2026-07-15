@@ -2,11 +2,10 @@
 
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
 
 export function LoginForm() {
   const router = useRouter();
-  const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -17,10 +16,13 @@ export function LoginForm() {
     setSubmitting(true);
 
     try {
-      const supabase = createClient();
-      const { error: loginError } = await supabase.auth.signInWithPassword({ email, password });
-      if (loginError) {
-        setError("The email address or password is incorrect.");
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ identifier, password }),
+      });
+      if (!response.ok) {
+        setError("The email/practice number or password is incorrect.");
         return;
       }
       router.replace("/patients");
@@ -36,8 +38,8 @@ export function LoginForm() {
     <form onSubmit={submit}>
       {error && <div className="formErrorBanner" role="alert">{error}</div>}
       <div className="formField">
-        <label htmlFor="email">Email address</label>
-        <input id="email" type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} required />
+        <label htmlFor="identifier">Email or practice number</label>
+        <input id="identifier" type="text" autoComplete="username" value={identifier} onChange={(event) => setIdentifier(event.target.value)} required />
       </div>
       <div className="formField">
         <label htmlFor="password">Password</label>

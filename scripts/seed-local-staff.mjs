@@ -33,6 +33,7 @@ const profile = await admin.from("profiles").upsert({
   display_name: "Dr Refiloe G",
   role: "doctor",
   active: true,
+  practice_number: process.env.LOCAL_STAFF_PRACTICE_NUMBER ?? "0127965",
 });
 assert.ifError(profile.error);
 
