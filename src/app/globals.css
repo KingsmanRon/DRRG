@@ -761,7 +761,6 @@ textarea:focus-visible {
   background: #ffffff;
   display: flex;
   flex-direction: column;
-  justify-content: center;
   overflow-x: hidden;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
@@ -772,6 +771,10 @@ textarea:focus-visible {
   flex-direction: column;
   align-items: stretch;
   flex-shrink: 0;
+  /* Auto margins centre the content when it fits, but collapse to 0 when it
+     overflows — unlike justify-content: center, which clips the top above the
+     scrollable area. */
+  margin-top: auto;
 }
 
 .loginPanelLogo {
@@ -818,6 +821,7 @@ textarea:focus-visible {
 
 .loginPanelForm {
   flex-shrink: 0;
+  margin-bottom: auto;
 }
 
 .loginPanelForm h1 {
@@ -873,8 +877,9 @@ textarea:focus-visible {
   flex-shrink: 0;
 }
 
-/* Short laptop / short viewport: less vertical padding, allow shell to shrink */
-@media (max-height: 780px) and (min-width: 901px) {
+/* Short laptop / tablet landscape: less vertical padding, allow shell to shrink.
+   860px covers iPad Air (820) and iPad Pro 11" (834) in landscape. */
+@media (max-height: 860px) and (min-width: 901px) {
   .loginPage {
     padding: 16px 20px;
   }
@@ -887,7 +892,6 @@ textarea:focus-visible {
 
   .loginPanel {
     padding: 36px 48px;
-    justify-content: flex-start;
   }
 
   .loginPanelLogo {
@@ -914,6 +918,19 @@ textarea:focus-visible {
 
   .loginPanelForm > p {
     margin-bottom: 14px;
+  }
+}
+
+/* Touch devices (tablets) in the two-column layout: don't trap scrolling
+   inside the sign-in panel — let the whole page scroll instead. */
+@media (pointer: coarse) and (min-width: 901px) {
+  .loginShell {
+    max-height: none;
+  }
+
+  .loginPanel {
+    max-height: none;
+    overflow-y: visible;
   }
 }
 
