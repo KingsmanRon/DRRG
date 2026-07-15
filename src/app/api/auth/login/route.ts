@@ -13,21 +13,34 @@ const GENERIC_LOGIN_ERROR = "The email/practice number or password is incorrect.
 async function emailForPracticeNumber(practiceNumber: string): Promise<string | null> {
   const url = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL;
   const secretKey = process.env.SUPABASE_SECRET_KEY;
-  if (!url || !secretKey) return null;
+  if (!url || !secretKey) {
+    console.error(
+      `Practice-number login unavailable: missing ${[!url && "SUPABASE_URL/NEXT_PUBLIC_SUPABASE_URL", !secretKey && "SUPABASE_SECRET_KEY"].filter(Boolean).join(" and ")}.`,
+    );
+    return null;
+  }
 
   const admin = createSupabaseClient<Database>(url, secretKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
-  const { data: profile } = await admin
+  const { data: profile, error: profileError } = await admin
     .from("profiles")
     .select("user_id")
     .eq("practice_number", practiceNumber)
     .eq("active", true)
     .maybeSingle();
+  if (profileError) {
+    console.error(`Practice-number profile lookup failed: ${profileError.message}`);
+    return null;
+  }
   if (!profile) return null;
 
-  const { data } = await admin.auth.admin.getUserById(profile.user_id);
+  const { data, error: userError } = await admin.auth.admin.getUserById(profile.user_id);
+  if (userError) {
+    console.error(`Practice-number user fetch failed: ${userError.message}`);
+    return null;
+  }
   return data?.user?.email ?? null;
 }
 
