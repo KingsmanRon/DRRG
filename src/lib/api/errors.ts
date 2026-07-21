@@ -64,6 +64,21 @@ export function mapPatientMutationError(
     );
   }
 
+  if (
+    code === "23514" &&
+    (text.includes("patients_contact_shape_check") ||
+      text.includes("patients_phone_check") ||
+      text.includes("patients_residential_address_check"))
+  ) {
+    return NextResponse.json(
+      {
+        error:
+          "Add a mobile number and residential address, or tick “no contact details on file” and record a reason.",
+      },
+      { status: 422 },
+    );
+  }
+
   if (code === "22023" && text.includes("soft_duplicate")) {
     return NextResponse.json(
       {

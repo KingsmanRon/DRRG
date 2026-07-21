@@ -58,7 +58,7 @@ export default async function PatientDetailPage({
   const { data, error } = await supabase
     .from("patients")
     .select(
-      "id, file_number, first_names, surname, date_of_birth, identity_type, identity_number, identity_country, no_identity_reason, phone, email, residential_address, status, merged_into, archived_at",
+      "id, file_number, first_names, surname, date_of_birth, identity_type, identity_number, identity_country, no_identity_reason, phone, email, residential_address, no_contact_reason, status, merged_into, archived_at",
     )
     .eq("id", id)
     .maybeSingle();
@@ -145,7 +145,7 @@ export default async function PatientDetailPage({
               </div>
               <div>
                 <dt>Phone</dt>
-                <dd>{patient.phone}</dd>
+                <dd>{patient.phone ?? "Not on file"}</dd>
               </div>
               <div>
                 <dt>Email</dt>
@@ -153,8 +153,14 @@ export default async function PatientDetailPage({
               </div>
               <div>
                 <dt>Address</dt>
-                <dd>{patient.residential_address}</dd>
+                <dd>{patient.residential_address ?? "Not on file"}</dd>
               </div>
+              {patient.no_contact_reason && (
+                <div>
+                  <dt>No contact details</dt>
+                  <dd>{patient.no_contact_reason}</dd>
+                </div>
+              )}
             </dl>
           </div>
         </section>

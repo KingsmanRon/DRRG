@@ -44,6 +44,38 @@ describe("PatientInput", () => {
     expect(result.success).toBe(true);
   });
 
+  it("accepts a patient with no contact details when a reason is recorded", () => {
+    const result = PatientInput.safeParse({
+      ...base,
+      phone: "",
+      residential_address: "",
+      no_contact_details: true,
+      no_contact_reason: "Treated on the day, no phone or fixed address",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("requires a reason when contact details are omitted", () => {
+    const result = PatientInput.safeParse({
+      ...base,
+      phone: "",
+      residential_address: "",
+      no_contact_details: true,
+      no_contact_reason: "",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("still requires phone and address when no reason is given", () => {
+    const result = PatientInput.safeParse({ ...base, phone: "", residential_address: "" });
+    expect(result.success).toBe(false);
+  });
+
+  it("drops a stray no-contact reason when contact details are present", () => {
+    const parsed = PatientInput.parse({ ...base, no_contact_details: false, no_contact_reason: "ignored" });
+    expect(normalizePatientInput(parsed).no_contact_reason).toBe("");
+  });
+
   it("requires an issuing country for passports", () => {
     const result = PatientInput.safeParse({
       ...base,

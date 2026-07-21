@@ -10,7 +10,7 @@ export type PatientListItem = {
   date_of_birth: string;
   identity_type: string;
   identity_last4: string | null;
-  phone: string;
+  phone: string | null;
   status: string;
   is_merged?: boolean | null;
   duplicate_tier?: "likely" | "possible" | null;
@@ -176,7 +176,7 @@ export function PatientTable({
                 </td>
                 <td data-label="Date of birth">{patient.date_of_birth}</td>
                 <td data-label="Identity">{identityLabel(patient)}</td>
-                <td data-label="Phone">{patient.phone}</td>
+                <td data-label="Phone">{patient.phone ?? "—"}</td>
                 <td data-label="Status">
                   <StatusCell patient={patient} />
                 </td>

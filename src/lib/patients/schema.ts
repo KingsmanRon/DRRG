@@ -22,23 +22,13 @@ const patientCoreShape = {
   identity_number: z.string().trim().max(80).default(""),
   identity_country: z.string().trim().toUpperCase().max(2).default(""),
   no_identity_reason: z.string().trim().max(250).default(""),
-  phone: z
-    .string()
-    .trim()
-    .regex(/^\+?[0-9 ()]{7,20}$/, "Enter a valid mobile number.")
-    .refine(
-      (value) => {
-        const digits = value.replace(/\D/g, "").length;
-        return digits >= 7 && digits <= 15;
-      },
-      "Enter a valid mobile number.",
-    ),
+  // Phone and address are validated conditionally in refineContact: both are
+  // required unless "no contact details on file" is recorded with a reason.
+  phone: z.string().trim().max(20).default(""),
   email: optionalEmail,
-  residential_address: z
-    .string()
-    .trim()
-    .min(3, "Residential address is required.")
-    .max(500),
+  residential_address: z.string().trim().max(500).default(""),
+  no_contact_details: z.boolean().default(false),
+  no_contact_reason: z.string().trim().max(250).default(""),
 } as const;
 
 type PatientCore = {
@@ -117,6 +107,65 @@ function refinePatientCore(value: PatientCore, context: z.RefinementCtx) {
   }
 }
 
+const PHONE_PATTERN = /^\+?[0-9 ()]{7,20}$/;
+
+/** A present phone number must look like a 7–15 digit mobile number. */
+function isValidPhoneFormat(value: string): boolean {
+  if (!PHONE_PATTERN.test(value)) return false;
+  const digits = value.replace(/\D/g, "").length;
+  return digits >= 7 && digits <= 15;
+}
+
+type ContactCore = {
+  phone: string;
+  residential_address: string;
+  no_contact_details: boolean;
+  no_contact_reason: string;
+};
+
+/**
+ * Contact validation shared by onboarding, editing and the contact step.
+ * Mirrors the "No identity document" pattern: phone and address are mandatory
+ * unless the user records that there are no contact details on file, in which
+ * case a short reason is required and any value that *is* supplied must be valid.
+ */
+function refineContact(value: ContactCore, context: z.RefinementCtx) {
+  const phone = value.phone.trim();
+  const address = value.residential_address.trim();
+
+  if (value.no_contact_details) {
+    if (value.no_contact_reason.trim().length < 3) {
+      context.addIssue({
+        code: "custom",
+        path: ["no_contact_reason"],
+        message: "Record why there are no contact details on file.",
+      });
+    }
+    if (phone && !isValidPhoneFormat(phone)) {
+      context.addIssue({ code: "custom", path: ["phone"], message: "Enter a valid mobile number." });
+    }
+    if (address && address.length < 3) {
+      context.addIssue({
+        code: "custom",
+        path: ["residential_address"],
+        message: "Enter a valid address or leave it blank.",
+      });
+    }
+    return;
+  }
+
+  if (!isValidPhoneFormat(phone)) {
+    context.addIssue({ code: "custom", path: ["phone"], message: "Enter a valid mobile number." });
+  }
+  if (address.length < 3) {
+    context.addIssue({
+      code: "custom",
+      path: ["residential_address"],
+      message: "Residential address is required.",
+    });
+  }
+}
+
 export const PatientInput = z
   .object({
     ...patientCoreShape,
@@ -135,6 +184,7 @@ export const PatientInput = z
   })
   .superRefine((value, context) => {
     refinePatientCore(value, context);
+    refineContact(value, context);
 
     if (value.duplicate_candidate_ids.length > 0) {
       if (!value.duplicate_reviewed) {
@@ -162,7 +212,10 @@ export const PatientUpdate = z
     ...patientCoreShape,
     file_number: z.string().trim().min(1, "File number is required.").max(40),
   })
-  .superRefine(refinePatientCore);
+  .superRefine((value, context) => {
+    refinePatientCore(value, context);
+    refineContact(value, context);
+  });
 
 export type PatientUpdate = z.infer<typeof PatientUpdate>;
 
@@ -199,11 +252,15 @@ export const IdentityStep = z
     );
   });
 
-export const ContactDetailsStep = z.object({
-  phone: patientCoreShape.phone,
-  email: patientCoreShape.email,
-  residential_address: patientCoreShape.residential_address,
-});
+export const ContactDetailsStep = z
+  .object({
+    phone: patientCoreShape.phone,
+    email: patientCoreShape.email,
+    residential_address: patientCoreShape.residential_address,
+    no_contact_details: patientCoreShape.no_contact_details,
+    no_contact_reason: patientCoreShape.no_contact_reason,
+  })
+  .superRefine(refineContact);
 
 export const ConsentStep = z
   .object({
@@ -251,6 +308,8 @@ function normalizeCore<
     phone: string;
     email: string;
     residential_address: string;
+    no_contact_details: boolean;
+    no_contact_reason: string;
   },
 >(input: T): T {
   return {
@@ -269,6 +328,9 @@ function normalizeCore<
     phone: input.phone.trim(),
     email: input.email.trim().toLowerCase(),
     residential_address: input.residential_address.trim(),
+    // The reason column is the DB's signal for "no contact details on file";
+    // clear it unless the flag is set so full-contact records store null.
+    no_contact_reason: input.no_contact_details ? input.no_contact_reason.trim() : "",
   };
 }
 

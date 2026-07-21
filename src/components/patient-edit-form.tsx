@@ -18,9 +18,10 @@ export type PatientRecord = {
   identity_number: string | null;
   identity_country: string | null;
   no_identity_reason: string | null;
-  phone: string;
+  phone: string | null;
   email: string | null;
-  residential_address: string;
+  residential_address: string | null;
+  no_contact_reason: string | null;
   status: string;
 };
 
@@ -41,6 +42,8 @@ type Draft = {
   phone: string;
   email: string;
   residential_address: string;
+  no_contact_details: boolean;
+  no_contact_reason: string;
 };
 
 function toDraft(patient: PatientRecord): Draft {
@@ -53,9 +56,12 @@ function toDraft(patient: PatientRecord): Draft {
     identity_number: patient.identity_number ?? "",
     identity_country: patient.identity_country ?? "",
     no_identity_reason: patient.no_identity_reason ?? "",
-    phone: patient.phone,
+    phone: patient.phone ?? "",
     email: patient.email ?? "",
-    residential_address: patient.residential_address,
+    residential_address: patient.residential_address ?? "",
+    // A stored reason is the DB's marker for "no contact details on file".
+    no_contact_details: patient.no_contact_reason != null,
+    no_contact_reason: patient.no_contact_reason ?? "",
   };
 }
 
@@ -106,6 +112,8 @@ export function PatientEditForm({
       phone: draft.phone,
       email: draft.email,
       residential_address: draft.residential_address,
+      no_contact_details: draft.no_contact_details,
+      no_contact_reason: draft.no_contact_reason,
     };
   }
 
@@ -258,7 +266,7 @@ export function PatientEditForm({
           <h2 className="formPanelHeader">Contact details</h2>
           <div className="formPanelBody formGrid">
             <div className="formField">
-              <label htmlFor="phone">Mobile number <span className="required">*</span></label>
+              <label htmlFor="phone">Mobile number {draft.no_contact_details ? null : <span className="required">*</span>}</label>
               <input id="phone" type="tel" value={draft.phone} onChange={(event) => update("phone", event.target.value)} autoComplete="tel" />
               <FieldError message={errors.phone} />
             </div>
@@ -268,10 +276,23 @@ export function PatientEditForm({
               <FieldError message={errors.email} />
             </div>
             <div className="formField fullWidth">
-              <label htmlFor="residential_address">Residential address <span className="required">*</span></label>
+              <label htmlFor="residential_address">Residential address {draft.no_contact_details ? null : <span className="required">*</span>}</label>
               <textarea id="residential_address" value={draft.residential_address} onChange={(event) => update("residential_address", event.target.value)} autoComplete="street-address" />
+              <p className="fieldHelp">Searchable — helps find patients who gave different names at the same address.</p>
               <FieldError message={errors.residential_address} />
             </div>
+
+            <label className="checkboxField fullWidth">
+              <input type="checkbox" checked={draft.no_contact_details} onChange={(event) => update("no_contact_details", event.target.checked)} />
+              <span>This patient has no contact details on file.</span>
+            </label>
+            {draft.no_contact_details && (
+              <div className="formField fullWidth">
+                <label htmlFor="no_contact_reason">Reason there are no contact details <span className="required">*</span></label>
+                <textarea id="no_contact_reason" value={draft.no_contact_reason} onChange={(event) => update("no_contact_reason", event.target.value)} placeholder="For example, treated on the day with no phone or fixed address" />
+                <FieldError message={errors.no_contact_reason} />
+              </div>
+            )}
           </div>
         </section>
 

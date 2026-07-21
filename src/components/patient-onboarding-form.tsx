@@ -20,7 +20,7 @@ type Candidate = {
   first_names: string;
   surname: string;
   date_of_birth: string;
-  phone: string;
+  phone: string | null;
   identity_last4: string | null;
   match_score: number;
   match_tier?: string;
@@ -39,6 +39,8 @@ type Draft = {
   phone: string;
   email: string;
   residential_address: string;
+  no_contact_details: boolean;
+  no_contact_reason: string;
   signature_value: string;
   patient_present_attestation: boolean;
   duplicate_review_reason: string;
@@ -56,6 +58,8 @@ const initialDraft: Draft = {
   phone: "",
   email: "",
   residential_address: "",
+  no_contact_details: false,
+  no_contact_reason: "",
   signature_value: "",
   patient_present_attestation: false,
   duplicate_review_reason: "",
@@ -128,6 +132,8 @@ export function PatientOnboardingForm() {
         phone: draft.phone,
         email: draft.email,
         residential_address: draft.residential_address,
+        no_contact_details: draft.no_contact_details,
+        no_contact_reason: draft.no_contact_reason,
       });
       if (!result.success) {
         setErrors(fieldErrorsFromZod(result.error));
@@ -358,7 +364,7 @@ export function PatientOnboardingForm() {
             <h2 className="formPanelHeader" id="contact-heading">Contact details</h2>
             <div className="formPanelBody formGrid">
               <div className="formField">
-                <label htmlFor="phone">Mobile number <span className="required">*</span></label>
+                <label htmlFor="phone">Mobile number {draft.no_contact_details ? null : <span className="required">*</span>}</label>
                 <input id="phone" type="tel" value={draft.phone} onChange={(event) => update("phone", event.target.value)} autoComplete="tel" />
                 <FieldError message={errors.phone} />
               </div>
@@ -368,11 +374,23 @@ export function PatientOnboardingForm() {
                 <FieldError message={errors.email} />
               </div>
               <div className="formField fullWidth">
-                <label htmlFor="residential_address">Residential address <span className="required">*</span></label>
+                <label htmlFor="residential_address">Residential address {draft.no_contact_details ? null : <span className="required">*</span>}</label>
                 <textarea id="residential_address" value={draft.residential_address} onChange={(event) => update("residential_address", event.target.value)} autoComplete="street-address" />
-                <p className="fieldHelp">Address is stored for administration but is not used as a unique identity.</p>
+                <p className="fieldHelp">Searchable — patients who give different names at the same address surface together. Address is not a unique identity, so genuinely different people at one address stay as separate files.</p>
                 <FieldError message={errors.residential_address} />
               </div>
+
+              <label className="checkboxField fullWidth">
+                <input type="checkbox" checked={draft.no_contact_details} onChange={(event) => update("no_contact_details", event.target.checked)} />
+                <span>This patient has no contact details on file.</span>
+              </label>
+              {draft.no_contact_details && (
+                <div className="formField fullWidth">
+                  <label htmlFor="no_contact_reason">Reason there are no contact details <span className="required">*</span></label>
+                  <textarea id="no_contact_reason" value={draft.no_contact_reason} onChange={(event) => update("no_contact_reason", event.target.value)} placeholder="For example, treated on the day with no phone or fixed address" />
+                  <FieldError message={errors.no_contact_reason} />
+                </div>
+              )}
             </div>
           </section>
         )}
@@ -450,7 +468,7 @@ function DuplicateCandidateList({ candidates }: { candidates: Candidate[] }) {
         <li className="duplicateCandidate" key={candidate.id}>
           <div><div className="candidateName">{candidate.first_names} {candidate.surname}</div><div className="candidateMeta">{candidate.file_number}</div></div>
           <div className="candidateMeta">Born {candidate.date_of_birth}</div>
-          <div className="candidateMeta">{candidate.phone}</div>
+          <div className="candidateMeta">{candidate.phone ?? "No phone on file"}</div>
           <div>
             <strong>{candidate.match_tier === "likely" ? "Likely duplicate" : "Possible duplicate"}</strong>
             <div className="candidateMeta">{formatMatchReasons(candidate.match_reasons)}</div>

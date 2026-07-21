@@ -35,6 +35,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       phone: input.phone,
       email: input.email,
       residential_address: input.residential_address,
+      no_contact_reason: input.no_contact_reason,
     },
   });
 

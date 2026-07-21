@@ -34,6 +34,7 @@ export async function POST(request: NextRequest) {
       phone: input.phone,
       email: input.email,
       residential_address: input.residential_address,
+      no_contact_reason: input.no_contact_reason,
     },
     p_consent: {
       consent_version: input.consent_version,

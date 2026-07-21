@@ -72,7 +72,7 @@ export function PatientSearch({
           name="q"
           value={value}
           onChange={(event) => setValue(event.target.value)}
-          placeholder="Name, file number, phone or ID number"
+          placeholder="Name, address, file number, phone or ID"
           autoComplete="off"
         />
         <button className="button buttonSecondary searchButton" type="submit">Search</button>
