@@ -1,14 +1,19 @@
+import { cookies } from "next/headers";
 import Link from "next/link";
 import { PlusIcon } from "@/components/icons";
 import { PatientSearch, type PatientListScope } from "@/components/patient-search";
 import { PatientTable, type PatientListItem, type SortColumn, type SortDir } from "@/components/patient-table";
+import { ResponsivePageSize } from "@/components/responsive-page-size";
 import { requireStaffPage } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import type { Json } from "@/lib/supabase/database.types";
 
 export const dynamic = "force-dynamic";
 
-const PAGE_SIZE = 25;
+// Rows per page depends on the device (set client-side via a cookie): touch
+// tablets get fewer rows, desktop gets more. Default to desktop for first paint.
+const TABLET_PAGE_SIZE = 10;
+const DESKTOP_PAGE_SIZE = 15;
 const SCOPES: PatientListScope[] = ["active", "include_archived", "archived_only"];
 
 type PatientSearchResult = {
@@ -33,12 +38,13 @@ async function getPatients(
   sort: SortColumn | undefined,
   dir: SortDir | undefined,
   scope: PatientListScope,
+  pageSize: number,
 ): Promise<PatientSearchResult> {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("search_patients", {
     p_query: query,
-    p_limit: PAGE_SIZE,
-    p_offset: (page - 1) * PAGE_SIZE,
+    p_limit: pageSize,
+    p_offset: (page - 1) * pageSize,
     p_sort: sort ?? "recent",
     p_dir: dir ?? "desc",
     p_scope: scope,
@@ -131,12 +137,19 @@ export default async function PatientsPage({
   // Archive filters are doctor-only in the UI; the RPC also enforces this.
   const scope: PatientListScope = staff.role === "doctor" ? requestedScope : "active";
 
-  const result = await getPatients(query, page, sort, dir, scope);
-  const pageCount = Math.max(1, Math.ceil(result.total_count / PAGE_SIZE));
+  const cookieStore = await cookies();
+  const pageSize =
+    cookieStore.get("patientsPageSize")?.value === String(TABLET_PAGE_SIZE)
+      ? TABLET_PAGE_SIZE
+      : DESKTOP_PAGE_SIZE;
+
+  const result = await getPatients(query, page, sort, dir, scope, pageSize);
+  const pageCount = Math.max(1, Math.ceil(result.total_count / pageSize));
   const empty = emptyCopy(query, scope);
 
   return (
     <main className="pageShell">
+      <ResponsivePageSize />
       <div className="pageTitleRow">
         <div>
           <h1>Patients</h1>
@@ -160,7 +173,7 @@ export default async function PatientsPage({
         patients={result.patients}
         total={result.total_count}
         page={page}
-        pageSize={PAGE_SIZE}
+        pageSize={pageSize}
         heading={listHeading(query, sort, scope)}
         query={query}
         sort={sort}
