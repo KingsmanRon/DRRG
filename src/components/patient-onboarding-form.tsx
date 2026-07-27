@@ -27,8 +27,20 @@ type Candidate = {
   match_reasons: string[];
 };
 
+/** An existing household file this person is being added to (?file=DRRG…). */
+export type FileContext = {
+  file_number: string;
+  members: { id: string; first_names: string; surname: string; date_of_birth: string }[];
+  phone: string;
+  residential_address: string;
+  no_contact_reason: string;
+};
+
 type Draft = {
   file_number: string;
+  // Staff intent only: it does not change what is saved for this person, it
+  // decides whether the form offers to carry straight on to the next member.
+  family_file: boolean;
   first_names: string;
   surname: string;
   date_of_birth: string;
@@ -46,24 +58,33 @@ type Draft = {
   duplicate_review_reason: string;
 };
 
-const initialDraft: Draft = {
-  file_number: "",
-  first_names: "",
-  surname: "",
-  date_of_birth: "",
-  identity_type: "sa_id",
-  identity_number: "",
-  identity_country: "ZA",
-  no_identity_reason: "",
-  phone: "",
-  email: "",
-  residential_address: "",
-  no_contact_details: false,
-  no_contact_reason: "",
-  signature_value: "",
-  patient_present_attestation: false,
-  duplicate_review_reason: "",
-};
+function initialDraft(fileContext: FileContext | null): Draft {
+  return {
+    file_number: fileContext?.file_number ?? "",
+    family_file: false,
+    first_names: "",
+    surname: "",
+    date_of_birth: "",
+    identity_type: "sa_id",
+    identity_number: "",
+    identity_country: "ZA",
+    no_identity_reason: "",
+    // Shared household contact details carry over; each person can still be
+    // given their own before saving.
+    phone: fileContext?.phone ?? "",
+    email: "",
+    residential_address: fileContext?.residential_address ?? "",
+    no_contact_details: Boolean(fileContext?.no_contact_reason),
+    no_contact_reason: fileContext?.no_contact_reason ?? "",
+    signature_value: "",
+    patient_present_attestation: false,
+    duplicate_review_reason: "",
+  };
+}
+
+function memberNames(fileContext: FileContext): string {
+  return fileContext.members.map((member) => `${member.first_names} ${member.surname}`).join(", ");
+}
 
 const steps = ["Personal details", "Identity", "Contact details", "Consent"];
 
@@ -71,9 +92,14 @@ function FieldError({ message }: { message?: string }) {
   return message ? <p className="fieldError">{message}</p> : null;
 }
 
-export function PatientOnboardingForm() {
+export function PatientOnboardingForm({
+  fileContext = null,
+}: {
+  fileContext?: FileContext | null;
+}) {
+  const joiningFile = fileContext !== null;
   const [step, setStep] = useState(1);
-  const [draft, setDraft] = useState<Draft>(initialDraft);
+  const [draft, setDraft] = useState<Draft>(() => initialDraft(fileContext));
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [duplicatesReviewed, setDuplicatesReviewed] = useState(false);
@@ -175,6 +201,10 @@ export function PatientOnboardingForm() {
           phone: draft.phone,
           email: draft.email,
           residential_address: draft.residential_address,
+          // People already on this household file are not duplicate candidates
+          // for the person being added to it.
+          file_number: joiningFile ? fileContext.file_number : "",
+          join_file: joiningFile,
         }),
       });
       const body = await response.json();
@@ -221,7 +251,8 @@ export function PatientOnboardingForm() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         ...draft,
-        file_number: draft.file_number.trim(),
+        file_number: joiningFile ? fileContext.file_number : draft.file_number.trim(),
+        join_file: joiningFile,
         identity_country: identity.identity_country,
         identity_number: identity.identity_number,
         no_identity_reason: identity.no_identity_reason,
@@ -254,12 +285,34 @@ export function PatientOnboardingForm() {
   }
 
   if (createdFileNumber) {
+    // Adding the next person is a full page load, not a client-side link: the
+    // wizard has to come back empty, and a soft navigation can carry the
+    // previous person's answers (signature included) into the new form.
+    const nextPersonHref = `/patients/new?file=${encodeURIComponent(createdFileNumber)}`;
+    const leadWithNextPerson = joiningFile || draft.family_file;
+
     return (
       <main className="formShell">
         <section className="successPanel">
           <h1>Patient saved</h1>
-          <p>The patient was created as file <strong>{createdFileNumber}</strong>.</p>
-          <Link className="button buttonPrimary" href="/patients">Return to patients</Link>
+          <p>
+            {draft.first_names} {draft.surname} is on file <strong>{createdFileNumber}</strong>
+            {joiningFile ? `, with ${memberNames(fileContext)}.` : "."}
+          </p>
+          {leadWithNextPerson ? (
+            <>
+              <p>Add the next person on this file, or finish here.</p>
+              <div className="successActions">
+                <a className="button buttonPrimary" href={nextPersonHref}>Add another person to this file</a>
+                <Link className="button buttonSecondary" href="/patients">Done</Link>
+              </div>
+            </>
+          ) : (
+            <div className="successActions">
+              <Link className="button buttonPrimary" href="/patients">Return to patients</Link>
+              <a className="button buttonSecondary" href={nextPersonHref}>Add another person to this file</a>
+            </div>
+          )}
         </section>
       </main>
     );
@@ -269,7 +322,7 @@ export function PatientOnboardingForm() {
     <form onSubmit={submit} noValidate>
       <main className="formShell">
         <div className="formTitleRow">
-          <h1>New patient</h1>
+          <h1>{joiningFile ? "Add a person to this file" : "New patient"}</h1>
           <Link className="button buttonSecondary" href="/patients">Cancel</Link>
         </div>
 
@@ -287,12 +340,37 @@ export function PatientOnboardingForm() {
           <section className="formPanel" aria-labelledby="personal-heading">
             <h2 className="formPanelHeader" id="personal-heading">Personal details</h2>
             <div className="formPanelBody formGrid">
-              <div className="formField fullWidth">
-                <label htmlFor="file_number">File number</label>
-                <input id="file_number" value={draft.file_number} onChange={(event) => update("file_number", event.target.value)} autoComplete="off" placeholder="Leave blank to auto-generate" />
-                <p className="fieldHelp">If the patient already has a clinic file number, enter it here. Otherwise leave blank and one will be assigned.</p>
-                <FieldError message={errors.file_number} />
-              </div>
+              {joiningFile ? (
+                <div className="formField fullWidth">
+                  <span className="fieldLabel">File number</span>
+                  <p className="lockedField mono">{fileContext.file_number}</p>
+                  <p className="fieldHelp">
+                    Already on this file: {memberNames(fileContext)}. Contact details have been
+                    copied below — change them if this person&rsquo;s are different. They keep their
+                    own identity document, consent and history.
+                  </p>
+                  <FieldError message={errors.file_number} />
+                </div>
+              ) : (
+                <>
+                  <div className="formField fullWidth">
+                    <label htmlFor="file_number">File number</label>
+                    <input id="file_number" value={draft.file_number} onChange={(event) => update("file_number", event.target.value)} autoComplete="off" placeholder="Leave blank to auto-generate" />
+                    <p className="fieldHelp">If the patient already has a clinic file number, enter it here. Otherwise leave blank and one will be assigned. To put someone on a file that already exists, open that file and use &ldquo;Add a person to this file&rdquo;.</p>
+                    <FieldError message={errors.file_number} />
+                  </div>
+                  <label className="checkboxField fullWidth">
+                    <input type="checkbox" checked={draft.family_file} onChange={(event) => update("family_file", event.target.checked)} />
+                    <span>This file covers more than one person (a family or household file).</span>
+                  </label>
+                  {draft.family_file && (
+                    <p className="fieldHelp fullWidth">
+                      Register this person first. Once they are saved the form reopens on the same
+                      file number for the next person, with the contact details carried over.
+                    </p>
+                  )}
+                </>
+              )}
               <div className="formField">
                 <label htmlFor="first_names">First names <span className="required">*</span></label>
                 <input id="first_names" value={draft.first_names} onChange={(event) => update("first_names", event.target.value)} autoComplete="given-name" />

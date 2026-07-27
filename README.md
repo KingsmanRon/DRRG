@@ -10,8 +10,37 @@ An internal patient onboarding and register application for Dr Refiloe G's cash 
 4. Exact identity duplicate blocking.
 5. Soft duplicate review using name, date of birth and phone.
 6. Patient search, consent capture and audit history (doctors see activity on each file).
+7. Family files: one file number may cover several people.
 
 Clinical notes, billing and medical aid workflows are deliberately excluded.
+
+## Family files
+
+Cash patients are filed by household, so one file number can carry more than one
+person. Each person is still a full patient record with their own identity
+document, own consent and own audit trail — only the **number** is shared, and
+it is not rewritten or suffixed when a household grows.
+
+Tick **"This file covers more than one person"** when registering, and the form
+reopens on the same file number for the next member once the first is saved,
+carrying the phone and address over (email is not copied — it identifies a
+person, not a household). The same flow is available later from any patient:
+**Add a person to this file**.
+
+Because the file number is no longer unique, two rules protect it:
+
+1. A number already in use can only be reused through *Add a person to this
+   file*. Typing an existing number into the new-patient form is still rejected,
+   so a mistyped digit cannot attach someone to a stranger's household, and the
+   edit form will not let a patient be retyped onto another file.
+2. People on one file never flag each other as possible duplicates — sharing a
+   file is a staff statement that they are different people. Relatives share a
+   phone (+1) and an address (+1), which is exactly the threshold that would
+   otherwise demand a written justification for every member added.
+
+Merging is unaffected except that a losing file number only becomes a search
+alias when nobody else still holds it, so archiving one member never redirects
+searches for the whole household.
 
 ## Duplicate control
 
@@ -33,6 +62,7 @@ The system uses two levels of duplicate protection.
    number keeps finding the kept patient) or by **keep both**, which is
    remembered and re-opened only if the matched details later change.
 
+People sharing a file number are excluded from each other's duplicate checks.
 South African mobile numbers are normalised so local `082...` and international `+27 82...` formats match one another. Names and addresses are compared ignoring case, punctuation and accents.
 
 Patient records are never hard deleted (HPCSA requires clinical records to be retained). Merging archives the losing record and keeps it queryable for audit. Staff can also **archive** a single file that was registered in error (with a reason); **doctors** can **restore** manually archived files. Records archived by a merge cannot be restored — open the kept file instead.

@@ -90,6 +90,12 @@ export function mapPatientMutationError(
   }
 
   if (code === "P0002") {
+    if (context === "create") {
+      return NextResponse.json(
+        { error: "That file no longer exists. Open the file and use “Add a person to this file”." },
+        { status: 404 },
+      );
+    }
     if (context === "merge") {
       return NextResponse.json({ error: "One of these records no longer exists." }, { status: 404 });
     }

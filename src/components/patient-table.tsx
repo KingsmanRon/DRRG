@@ -14,6 +14,8 @@ export type PatientListItem = {
   status: string;
   is_merged?: boolean | null;
   duplicate_tier?: "likely" | "possible" | null;
+  /** How many active patients share this row's file number (1 = just them). */
+  file_member_count?: number | null;
 };
 
 export type SortColumn = "file_number" | "name" | "date_of_birth";
@@ -170,6 +172,11 @@ export function PatientTable({
                   <Link className="rowLink" href={`/patients/${patient.id}`}>
                     {patient.file_number}
                   </Link>
+                  {(patient.file_member_count ?? 1) > 1 && (
+                    <span className="familyBadge" title="This file number covers more than one person">
+                      {patient.file_member_count} people
+                    </span>
+                  )}
                 </td>
                 <td data-label="Patient">
                   {patient.first_names} {patient.surname}

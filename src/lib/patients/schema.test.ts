@@ -109,6 +109,26 @@ describe("PatientInput", () => {
     const result = PatientInput.safeParse({ ...base, phone: "0821234567890123" });
     expect(result.success).toBe(false);
   });
+
+  it("defaults to registering a new file rather than joining one", () => {
+    expect(PatientInput.parse(base).join_file).toBe(false);
+  });
+
+  it("accepts a person being added to an existing household file", () => {
+    const result = PatientInput.safeParse({
+      ...base,
+      file_number: "DRRG00000123",
+      join_file: true,
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("requires a file number when joining an existing file", () => {
+    const result = PatientInput.safeParse({ ...base, file_number: "", join_file: true });
+    expect(result.success).toBe(false);
+    if (result.success) return;
+    expect(fieldErrorsFromZod(result.error).file_number).toBeTruthy();
+  });
 });
 
 describe("onboarding step schemas", () => {

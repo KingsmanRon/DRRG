@@ -2079,3 +2079,85 @@ textarea:focus-visible {
     display: none;
   }
 }
+
+/* --------------------------------------------------------------------------
+   Family files: one file number covering several people.
+   -------------------------------------------------------------------------- */
+
+/* Register: marks a row whose file number is shared with other patients. */
+.familyBadge {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 8px;
+  padding: 2px 8px;
+  color: var(--green);
+  background: var(--green-soft);
+  border: 1px solid #b7d6c5;
+  border-radius: 999px;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-size: 11px;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+/* Patient page: who else is on this file. */
+.filePanel {
+  margin-bottom: 20px;
+}
+
+.filePanel .formPanelHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.filePanelCount {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.fileMembers {
+  margin: 0 0 16px;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 10px;
+}
+
+.fileMembers li {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* Onboarding: the file number is fixed when adding to an existing file. */
+.lockedField {
+  margin: 0;
+  padding: 9px 12px;
+  color: var(--text);
+  background: var(--surface-subtle);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-weight: 600;
+}
+
+.successActions {
+  margin-top: 12px;
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 640px) {
+  .successActions {
+    flex-direction: column;
+  }
+
+  .successActions .button {
+    width: 100%;
+  }
+}

@@ -171,6 +171,11 @@ export const PatientInput = z
     ...patientCoreShape,
     // Clinic-supplied file number. Blank means auto-generate (DRRG########).
     file_number: z.string().trim().max(40).default(""),
+    // Adding this person to a file number that already exists (a household
+    // file). Only set by the "add a person to this file" flow — typing an
+    // existing number into the form is still a collision, so a mistyped digit
+    // cannot attach a patient to a stranger's household.
+    join_file: z.boolean().default(false),
     consent_version: z.string().trim().min(1),
     consent_text_hash: z.string().regex(/^[a-f0-9]{64}$/),
     signature_type: z.enum(["typed_name", "drawn_signature"]),
@@ -185,6 +190,14 @@ export const PatientInput = z
   .superRefine((value, context) => {
     refinePatientCore(value, context);
     refineContact(value, context);
+
+    if (value.join_file && !value.file_number) {
+      context.addIssue({
+        code: "custom",
+        path: ["file_number"],
+        message: "Name the file this person is being added to.",
+      });
+    }
 
     if (value.duplicate_candidate_ids.length > 0) {
       if (!value.duplicate_reviewed) {

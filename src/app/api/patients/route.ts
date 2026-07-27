@@ -45,6 +45,7 @@ export async function POST(request: NextRequest) {
     },
     p_duplicate_candidate_ids: input.duplicate_candidate_ids,
     p_duplicate_review_reason: input.duplicate_review_reason,
+    p_join_file: input.join_file,
   });
 
   if (error) return mapPatientMutationError(error, "create");

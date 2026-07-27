@@ -22,6 +22,13 @@ function formatMetadata(action: string, metadata: Json): string {
   const meta = asRecord(metadata);
   if (!meta) return base;
 
+  if (action === "patient_created" && meta.joined_file === true) {
+    const file = typeof meta.file_number === "string" ? meta.file_number : null;
+    const size = typeof meta.household_size === "number" ? meta.household_size : null;
+    const base = file ? `Added to existing file ${file}` : "Added to an existing file";
+    return size ? `${base} (${size} people on the file)` : base;
+  }
+
   if (action === "patient_merged") {
     const source = typeof meta.source_file_number === "string" ? meta.source_file_number : null;
     const copied = Array.isArray(meta.fields_copied) ? meta.fields_copied.filter((v) => typeof v === "string") : [];

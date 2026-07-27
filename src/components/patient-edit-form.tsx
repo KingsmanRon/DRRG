@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { PatientUpdate, fieldErrorsFromZod } from "@/lib/patients/schema";
+import { FileMembersPanel, type FileMember } from "./file-members";
 import { WarningIcon } from "./icons";
 
 type IdentityType = "sa_id" | "passport" | "foreign_document" | "none";
@@ -72,9 +73,12 @@ function FieldError({ message }: { message?: string }) {
 export function PatientEditForm({
   patient,
   duplicateNotice,
+  fileMembers = [],
 }: {
   patient: PatientRecord;
   duplicateNotice?: DuplicateNotice | null;
+  /** Other active patients sharing this file number. */
+  fileMembers?: FileMember[];
 }) {
   const router = useRouter();
   const [draft, setDraft] = useState<Draft>(() => toDraft(patient));
@@ -181,7 +185,12 @@ export function PatientEditForm({
         <div className="formTitleRow">
           <div>
             <h1>{patient.first_names} {patient.surname}</h1>
-            <p className="mono muted">{patient.file_number}</p>
+            <p className="mono muted">
+              {patient.file_number}
+              {fileMembers.length > 0 && (
+                <span className="muted"> · shared with {fileMembers.length} other {fileMembers.length === 1 ? "person" : "people"}</span>
+              )}
+            </p>
           </div>
           <Link className="button buttonSecondary" href="/patients">Back to patients</Link>
         </div>
@@ -198,6 +207,8 @@ export function PatientEditForm({
         {formError && <div className="formErrorBanner" role="alert">{formError}</div>}
         {saved && <div className="formSuccessBanner" role="status">Changes saved.</div>}
 
+        <FileMembersPanel fileNumber={patient.file_number} members={fileMembers} />
+
         <div className="formPrimary">
         <section className="formPanel">
           <h2 className="formPanelHeader">Patient details</h2>
@@ -205,7 +216,11 @@ export function PatientEditForm({
             <div className="formField fullWidth">
               <label htmlFor="file_number">File number <span className="required">*</span></label>
               <input id="file_number" value={draft.file_number} onChange={(event) => update("file_number", event.target.value)} autoComplete="off" />
-              <p className="fieldHelp">Clinic file number — must be unique.</p>
+              <p className="fieldHelp">
+                {fileMembers.length > 0
+                  ? "Clinic file number, shared with the other people on this file. Changing it here moves only this patient off the file."
+                  : "Clinic file number. Changing it to a number already in use is blocked — add someone to an existing file from that file instead."}
+              </p>
               <FieldError message={errors.file_number} />
             </div>
             <div className="formField">

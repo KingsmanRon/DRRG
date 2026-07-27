@@ -14,6 +14,10 @@ const DuplicateRequest = z.object({
   phone: z.string().trim().max(30).default(""),
   email: z.string().trim().max(254).default(""),
   residential_address: z.string().trim().max(500).default(""),
+  // Set when this person is being added to an existing household file: the
+  // people already on that file are not duplicate candidates for one another.
+  file_number: z.string().trim().max(40).default(""),
+  join_file: z.boolean().default(false),
 });
 
 function normalizeIdentityNumber(type: string, number: string): string {
@@ -58,6 +62,7 @@ export async function POST(request: NextRequest) {
     p_limit: 10,
     p_email: input.email,
     p_address: input.residential_address,
+    p_file_number: input.join_file && input.file_number ? input.file_number : null,
   });
 
   if (error) return mapPatientMutationError(error, "duplicates");

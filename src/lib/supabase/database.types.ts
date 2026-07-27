@@ -207,6 +207,7 @@ export type Database = {
           p_limit?: number;
           p_email?: string | null;
           p_address?: string | null;
+          p_file_number?: string | null;
         };
         Returns: {
           id: string;
@@ -229,6 +230,7 @@ export type Database = {
           p_consent: Json;
           p_duplicate_candidate_ids?: string[];
           p_duplicate_review_reason?: string;
+          p_join_file?: boolean;
         };
         Returns: { patient_id: string; file_number: string }[];
       };

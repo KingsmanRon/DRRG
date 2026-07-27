@@ -178,6 +178,15 @@ export default async function PatientDetailPage({
     );
   }
 
+  // Everyone else on this file number: one file can cover a whole household.
+  const { data: householdRows } = await supabase
+    .from("patients")
+    .select("id, first_names, surname, date_of_birth")
+    .eq("file_number", patient.file_number)
+    .eq("status", "active")
+    .neq("id", id)
+    .order("date_of_birth", { ascending: true });
+
   const { data: flaggedRows } = await supabase
     .from("duplicate_reviews")
     .select("patient_id, candidate_patient_id")
@@ -209,7 +218,13 @@ export default async function PatientDetailPage({
   return (
     <PatientDetailTabs
       showHistory={isDoctor}
-      details={<PatientEditForm patient={patient} duplicateNotice={duplicateNotice} />}
+      details={
+        <PatientEditForm
+          patient={patient}
+          duplicateNotice={duplicateNotice}
+          fileMembers={householdRows ?? []}
+        />
+      }
       history={
         <div className="pageShell auditTrailWrap">
           <PatientAuditTrail events={auditEvents} embedded />

@@ -1,5 +1,28 @@
 # Changelog
 
+## 2026-07-27 — Family files (several people on one file number)
+
+- **One file number can now cover a household.** `patients.file_number` is no
+  longer unique; each person stays a full record with their own identity,
+  consent and audit trail. Existing numbers are unchanged — no suffixes, no
+  renumbering.
+- **Registering:** a "This file covers more than one person" checkbox on the
+  new-patient form. After saving, the wizard reopens on the same file number for
+  the next member with phone and address carried over (email is not — it
+  identifies a person, not a household). Also reachable later as **Add a person
+  to this file** from any patient page.
+- **Typo guard:** reusing a number requires the explicit add-a-person flow
+  (`onboard_patient(p_join_file => true)`). Typing an in-use number into the
+  form, or retyping onto one from the edit form, is still a 409.
+- **No duplicate spam within a household:** `find_possible_duplicates` gains
+  `p_file_number` and skips people already on that file. Editing a member no
+  longer re-opens dismissed pairs against their own household.
+- **Merge:** a losing file number becomes a search alias only when nobody else
+  holds it, so archiving one member never redirects searches for the family.
+- **Register:** rows whose number is shared show an "N people" badge, and
+  sorting by file number groups a household together (oldest member first).
+  `search_patients` returns `file_member_count`.
+
 ## 2026-07-12 — UI polish (list scopes, hierarchy, mobile duplicates)
 
 - **Doctor list scopes:** Active only · Include archived · Archived only (chips on Patients).
