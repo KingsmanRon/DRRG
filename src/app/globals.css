@@ -2217,11 +2217,8 @@ textarea:focus-visible {
   overflow-wrap: anywhere;
 }
 
-.fileGroupPhone {
-  margin-left: auto;
-  color: var(--muted);
-  font-size: 13px;
-  white-space: nowrap;
+.fileGroupSep {
+  color: var(--border-strong);
 }
 
 /* Members sit under their file header. The name is indented and the group
@@ -2242,10 +2239,6 @@ textarea:focus-visible {
 }
 
 @media (max-width: 860px) {
-  .fileGroupPhone {
-    margin-left: 0;
-  }
-
   .fileMemberRow td:nth-child(2) {
     padding-left: 18px;
   }

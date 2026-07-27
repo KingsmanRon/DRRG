@@ -219,8 +219,15 @@ function FileGroupRows({ group, defaultOpen }: { group: FileGroup; defaultOpen: 
               {group.totalOnFile} people
               {shown < group.totalOnFile ? ` · ${shown} on this page` : ""}
             </span>
-            <span className="fileGroupNames">{names}</span>
-            {sharedPhone && <span className="fileGroupPhone">{sharedPhone}</span>}
+            <span className="fileGroupNames">
+              {names}
+              {sharedPhone && (
+                <>
+                  <span className="fileGroupSep" aria-hidden="true"> · </span>
+                  {sharedPhone}
+                </>
+              )}
+            </span>
           </button>
         </td>
       </tr>
