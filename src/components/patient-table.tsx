@@ -1,5 +1,8 @@
+"use client";
+
 import Link from "next/link";
-import { WarningIcon } from "./icons";
+import { useState } from "react";
+import { ChevronRightIcon, WarningIcon } from "./icons";
 import type { PatientListScope } from "./patient-search";
 
 export type PatientListItem = {
@@ -20,6 +23,31 @@ export type PatientListItem = {
 
 export type SortColumn = "file_number" | "name" | "date_of_birth";
 export type SortDir = "asc" | "desc";
+
+/** Rows sharing a file number, kept in the order the search returned them. */
+type FileGroup = {
+  file_number: string;
+  patients: PatientListItem[];
+  /** Active people on the file overall — may exceed what this page shows. */
+  totalOnFile: number;
+};
+
+function groupByFile(patients: PatientListItem[]): FileGroup[] {
+  const groups = new Map<string, FileGroup>();
+  for (const patient of patients) {
+    const existing = groups.get(patient.file_number);
+    if (existing) {
+      existing.patients.push(patient);
+    } else {
+      groups.set(patient.file_number, {
+        file_number: patient.file_number,
+        patients: [patient],
+        totalOnFile: patient.file_member_count ?? 1,
+      });
+    }
+  }
+  return [...groups.values()];
+}
 
 function identityLabel(patient: PatientListItem): string {
   if (patient.identity_type === "none" || !patient.identity_last4) return "No identity document";
@@ -110,6 +138,99 @@ function StatusCell({ patient }: { patient: PatientListItem }) {
   );
 }
 
+/** One patient's row — identical whether or not it sits inside a file group. */
+function PatientRow({ patient, nested }: { patient: PatientListItem; nested?: boolean }) {
+  return (
+    <tr
+      className={[
+        patient.duplicate_tier ? "duplicateRow" : "",
+        patient.status === "archived" ? "archivedRow" : "",
+        nested ? "fileMemberRow" : "",
+      ]
+        .filter(Boolean)
+        .join(" ") || undefined}
+    >
+      <td data-label="File number" className="mono">
+        {nested ? null : (
+          <Link className="rowLink" href={`/patients/${patient.id}`}>
+            {patient.file_number}
+          </Link>
+        )}
+      </td>
+      <td data-label="Patient">
+        {nested ? (
+          <Link className="rowLink" href={`/patients/${patient.id}`}>
+            {patient.first_names} {patient.surname}
+          </Link>
+        ) : (
+          <>
+            {patient.first_names} {patient.surname}
+          </>
+        )}
+      </td>
+      <td data-label="Date of birth">{patient.date_of_birth}</td>
+      <td data-label="Identity">{identityLabel(patient)}</td>
+      <td data-label="Phone">{patient.phone ?? "—"}</td>
+      <td data-label="Status">
+        <StatusCell patient={patient} />
+      </td>
+      <td data-label="Actions" className="rowActions">
+        <Link className="button buttonSecondary buttonSmall" href={`/patients/${patient.id}`}>
+          Open
+        </Link>
+      </td>
+    </tr>
+  );
+}
+
+/**
+ * A file shared by several patients: one header row that expands.
+ *
+ * Without this the file number, its "N people" badge and the shared phone
+ * repeat identically on every row, which reads as a duplicated record when it
+ * is really one household file.
+ */
+function FileGroupRows({ group, defaultOpen }: { group: FileGroup; defaultOpen: boolean }) {
+  const [open, setOpen] = useState(defaultOpen);
+  const bodyId = `file-group-${group.file_number.replace(/[^A-Za-z0-9_-]/g, "")}`;
+  const shown = group.patients.length;
+  const names = group.patients.map((p) => `${p.first_names} ${p.surname}`).join(" · ");
+  // Everyone on the file usually shares one number; only claim it when they do.
+  const phones = new Set(group.patients.map((p) => p.phone ?? ""));
+  const sharedPhone = phones.size === 1 ? group.patients[0].phone : null;
+
+  return (
+    <tbody className="fileGroup" id={bodyId}>
+      <tr className="fileGroupRow">
+        <td colSpan={7}>
+          <button
+            type="button"
+            className="fileGroupToggle"
+            aria-expanded={open}
+            aria-controls={bodyId}
+            onClick={() => setOpen((current) => !current)}
+          >
+            <ChevronRightIcon
+              size={16}
+              className={`fileGroupChevron${open ? " fileGroupChevronOpen" : ""}`}
+            />
+            <span className="mono fileGroupNumber">{group.file_number}</span>
+            <span className="familyBadge">
+              {group.totalOnFile} people
+              {shown < group.totalOnFile ? ` · ${shown} on this page` : ""}
+            </span>
+            <span className="fileGroupNames">{names}</span>
+            {sharedPhone && <span className="fileGroupPhone">{sharedPhone}</span>}
+          </button>
+        </td>
+      </tr>
+      {open && group.patients.map((patient) => (
+        <PatientRow key={patient.id} patient={patient} nested />
+      ))}
+    </tbody>
+  );
+}
+
 export function PatientTable({
   patients,
   total,
@@ -139,6 +260,11 @@ export function PatientTable({
 }) {
   const first = total === 0 ? 0 : (page - 1) * pageSize + 1;
   const last = Math.min(page * pageSize, total);
+  const groups = groupByFile(patients);
+  // A search is someone looking for a person, so open the files it matched.
+  // Browsing the register keeps them shut so the list stays short.
+  const openByDefault = query.trim().length > 0;
+
   return (
     <section className="patientListSection" aria-labelledby="patient-list-heading">
       <h2 id="patient-list-heading">{heading}</h2>
@@ -157,44 +283,15 @@ export function PatientTable({
               </th>
             </tr>
           </thead>
-          <tbody>
-            {patients.map((patient) => (
-              <tr
-                key={patient.id}
-                className={[
-                  patient.duplicate_tier ? "duplicateRow" : "",
-                  patient.status === "archived" ? "archivedRow" : "",
-                ]
-                  .filter(Boolean)
-                  .join(" ") || undefined}
-              >
-                <td data-label="File number" className="mono">
-                  <Link className="rowLink" href={`/patients/${patient.id}`}>
-                    {patient.file_number}
-                  </Link>
-                  {(patient.file_member_count ?? 1) > 1 && (
-                    <span className="familyBadge" title="This file number covers more than one person">
-                      {patient.file_member_count} people
-                    </span>
-                  )}
-                </td>
-                <td data-label="Patient">
-                  {patient.first_names} {patient.surname}
-                </td>
-                <td data-label="Date of birth">{patient.date_of_birth}</td>
-                <td data-label="Identity">{identityLabel(patient)}</td>
-                <td data-label="Phone">{patient.phone ?? "—"}</td>
-                <td data-label="Status">
-                  <StatusCell patient={patient} />
-                </td>
-                <td data-label="Actions" className="rowActions">
-                  <Link className="button buttonSecondary buttonSmall" href={`/patients/${patient.id}`}>
-                    Open
-                  </Link>
-                </td>
-              </tr>
-            ))}
-          </tbody>
+          {groups.map((group) =>
+            group.patients.length > 1 ? (
+              <FileGroupRows key={group.file_number} group={group} defaultOpen={openByDefault} />
+            ) : (
+              <tbody key={group.file_number}>
+                <PatientRow patient={group.patients[0]} />
+              </tbody>
+            ),
+          )}
         </table>
         {patients.length === 0 && (
           <div className="emptyStatePanel">

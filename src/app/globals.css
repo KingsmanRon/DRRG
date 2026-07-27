@@ -2161,3 +2161,92 @@ textarea:focus-visible {
     width: 100%;
   }
 }
+
+/* --------------------------------------------------------------------------
+   Register: patients sharing a file number collapse into one expandable file
+   row, so a household file does not read as a duplicated record.
+   -------------------------------------------------------------------------- */
+
+.fileGroup {
+  border-top: 1px solid var(--border);
+}
+
+.fileGroupRow td {
+  padding: 0;
+  background: var(--surface-subtle);
+}
+
+.fileGroupToggle {
+  width: 100%;
+  padding: 12px 18px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  color: var(--text);
+  background: none;
+  border: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.fileGroupToggle:hover {
+  background: var(--sage);
+}
+
+.fileGroupChevron {
+  flex: none;
+  color: var(--muted);
+  transform: rotate(0deg);
+  transition: transform 150ms ease;
+}
+
+.fileGroupChevronOpen {
+  transform: rotate(90deg);
+}
+
+.fileGroupNumber {
+  font-weight: 650;
+}
+
+/* The people on the file, so a name is findable without expanding. */
+.fileGroupNames {
+  color: var(--muted);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.fileGroupPhone {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+/* Members sit under their file header. The name is indented and the group
+   carries a left accent, so the rows read as belonging to the file above
+   rather than as records missing a file number. */
+.fileMemberRow td:nth-child(2) {
+  padding-left: 30px;
+}
+
+.fileGroup .fileMemberRow td:first-child {
+  box-shadow: inset 3px 0 0 var(--green-soft);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fileGroupChevron {
+    transition: none;
+  }
+}
+
+@media (max-width: 860px) {
+  .fileGroupPhone {
+    margin-left: 0;
+  }
+
+  .fileMemberRow td:nth-child(2) {
+    padding-left: 18px;
+  }
+}

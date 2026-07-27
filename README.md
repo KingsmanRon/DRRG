@@ -38,6 +38,10 @@ Because the file number is no longer unique, two rules protect it:
    phone (+1) and an address (+1), which is exactly the threshold that would
    otherwise demand a written justification for every member added.
 
+In the register, patients sharing a file number collapse into one expandable
+file row, so a household reads as a single file rather than repeated records.
+Files with one patient are shown as ordinary rows.
+
 Merging is unaffected except that a losing file number only becomes a search
 alias when nobody else still holds it, so archiving one member never redirects
 searches for the whole household.

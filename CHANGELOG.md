@@ -1,5 +1,24 @@
 # Changelog
 
+## 2026-07-29 — Register groups patients sharing a file number
+
+A household file repeated its number, its "N people" badge and its phone on
+every member's row, which reads as a duplicated record when it is one file.
+
+Rows sharing a file number now collapse into a single expandable file row: the
+number stated once, the count, the names on the file, and the shared phone.
+Expanding reveals the members as ordinary rows, indented under the file with a
+left accent. Files matched by a search open automatically; browsing the
+register keeps them shut.
+
+Files with one patient are completely unchanged — no header row, no chevron.
+Columns, sorting, search, the Cash patient chip, duplicate badges, Open buttons
+and pagination are all untouched.
+
+Because pagination can split a household across pages, a partial group says so
+("3 people · 2 on this page") rather than silently showing a count that does
+not match the rows beneath it.
+
 ## 2026-07-27 — Family files (several people on one file number)
 
 - **One file number can now cover a household.** `patients.file_number` is no

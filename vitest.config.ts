@@ -9,6 +9,7 @@ export default defineConfig({
   },
   test: {
     environment: "node",
-    include: ["src/**/*.test.ts"],
+    // .tsx too: the table's grouping is asserted on rendered markup.
+    include: ["src/**/*.test.ts", "src/**/*.test.tsx"],
   },
 });
