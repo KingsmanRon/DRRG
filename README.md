@@ -73,6 +73,22 @@ Scoring for production decisions runs in Postgres (`private.duplicate_match` /
 `find_possible_duplicates`). The TypeScript helpers in `src/lib/patients/duplicate-score.ts`
 format UI banners and lock the weight/tier contract with unit tests.
 
+## Identity reasons
+
+When a patient has no identity document the reason is stored as a code
+(`no_identity_reason_code`), because the old mandatory free-text field produced
+unqueryable values like "Nog applicable". The forms still post free text and the
+database maps it, keeping the original words in `no_identity_note` — so nothing
+a user types is lost, and the code stays reportable. A coded reason posted
+directly is used as-is. Either way a reason is required, and `other` needs a
+note.
+
+`ask_identity_again` flags reasons that resolve at a later visit (not brought,
+newborn, Home Affairs or asylum pending) and defaults off for "declined".
+
+The legacy `no_identity_reason` column is retained and still written; do not
+read it in new code.
+
 ## Local setup
 
 The app runs end-to-end against a local Supabase stack. Docker Desktop must be running.

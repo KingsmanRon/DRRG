@@ -1,5 +1,30 @@
 # Changelog
 
+## 2026-07-29 — Identity reason: keep the coded column, keep the old forms
+
+The register's forms post the legacy free-text `no_identity_reason`. The coded
+reason shipped in `20260728090000` made the code mandatory, so those forms could
+not register or edit a patient without a document — `22023` on every attempt.
+
+The database now accepts **either** shape and derives the rest:
+
+- a coded reason arrives → used as-is (note optional, except for `other`);
+- free text arrives → mapped to a code, and kept **verbatim** in the note and
+  the legacy column, so the older form reads its own value back unchanged;
+- neither arrives → still rejected. A reason is still required.
+
+The mapping is the one the backfill used, extracted into
+`private.map_identity_reason` so the backfill and the runtime path cannot drift.
+It stays narrow: anything it cannot name confidently becomes `other` with the
+original words intact.
+
+Editing through the older form no longer clobbers `ask_identity_again`, which
+that form has no control for — the stored value survives while the reason is
+unchanged.
+
+No UI changes. `20260728090000` is restored to the repo unchanged (same version,
+so a database that already applied it skips it).
+
 ## 2026-07-27 — Family files (several people on one file number)
 
 - **One file number can now cover a household.** `patients.file_number` is no
