@@ -9,6 +9,7 @@ export default defineConfig({
   },
   test: {
     environment: "node",
-    include: ["src/**/*.test.ts"],
+    // .tsx too: component markup is asserted with renderToStaticMarkup.
+    include: ["src/**/*.test.ts", "src/**/*.test.tsx"],
   },
 });

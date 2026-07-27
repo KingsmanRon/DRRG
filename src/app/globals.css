@@ -218,14 +218,16 @@ textarea:focus-visible {
 }
 
 .searchField {
-  height: 64px;
-  padding: 0 22px;
+  position: relative;
+  height: 38px;
+  padding: 0 10px;
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 8px;
   color: var(--muted);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius);
+  background: var(--surface);
 }
 
 .searchField:focus-within {
@@ -248,27 +250,6 @@ textarea:focus-visible {
   color: #747b80;
 }
 
-.searchButton {
-  flex: 0 0 auto;
-}
-
-.clearSearch {
-  color: var(--green);
-  font-size: 14px;
-  font-weight: 700;
-  text-decoration: none;
-}
-
-.pagination {
-  margin-top: 24px;
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  align-items: center;
-  gap: 16px;
-  color: var(--muted);
-  font-size: 14px;
-}
-
 .pagination .button:last-child {
   justify-self: end;
 }
@@ -277,134 +258,15 @@ textarea:focus-visible {
   margin-top: 52px;
 }
 
-.patientTableWrap {
-  overflow: hidden;
-  border: 1px solid var(--border-strong);
-  border-radius: var(--panel-radius);
-}
-
-.patientTable {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 14px;
-}
-
-.patientTable th,
-.patientTable td {
-  padding: 17px 18px;
-  text-align: left;
-  border-bottom: 1px solid var(--border);
-  vertical-align: middle;
-}
-
-.patientTable th {
-  color: #34383b;
-  background: var(--surface-subtle);
-  font-size: 13px;
-  font-weight: 700;
-}
-
-.patientTable tbody tr:last-child td {
-  border-bottom: 0;
-}
-
-.patientTable tbody tr:hover {
-  background: #fafcfb;
-}
-
-/* Flagged rows keep a single quiet accent instead of a full-row tint: the
-   duplicate badge carries the message. */
-.patientTable .duplicateRow td:first-child {
-  box-shadow: inset 3px 0 0 var(--amber);
-}
-
-.statusCell .cashStatus + .duplicateBadge {
-  margin-left: 8px;
-}
-
-/* Secondary data-quality indicator; links to the duplicates page.
-   #a45c00 on #ffffff is 5.1:1 (WCAG AA). */
-.duplicateBadge {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 4px 8px;
-  color: var(--amber);
-  background: #ffffff;
-  border: 1px solid var(--amber-border);
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 650;
-  text-decoration: none;
-  white-space: nowrap;
-}
-
-.duplicateBadge:hover {
-  background: var(--amber-soft);
-  text-decoration: underline;
-}
-
-/* Sortable column headers */
-.patientTable th .sortHeader {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  color: inherit;
-  text-decoration: none;
-}
-
-.patientTable th .sortHeader:hover {
-  color: var(--green);
-  text-decoration: underline;
-}
-
-.sortIndicator {
-  font-size: 10px;
-  color: var(--muted);
-}
-
-.patientTable th[aria-sort] .sortIndicator {
-  color: var(--green);
-}
-
 .mono {
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.015em;
-}
-
-.cashStatus,
-.neutralStatus {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  white-space: nowrap;
-  padding: 4px 8px;
-  border: 1px solid;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 650;
-}
-
-.cashStatus {
-  color: var(--green);
-  background: var(--sage);
-  border-color: #b7d6c5;
-}
-
-.neutralStatus {
-  color: #50575c;
-  background: #f1f3f4;
-  border-color: #d1d6d9;
 }
 
 .tableCount,
 .emptyState {
   color: var(--muted);
   font-size: 13px;
-}
-
-.tableCount {
-  margin: 14px 0 0;
 }
 
 .emptyState {
@@ -492,12 +354,12 @@ textarea:focus-visible {
 
 .formPanelHeader {
   margin: 0;
-  padding: 17px 22px;
-  color: var(--green-dark);
-  background: var(--sage);
-  border-bottom: 1px solid var(--border);
-  font-size: 17px;
-  font-weight: 700;
+  padding: 0 0 14px;
+  color: var(--text);
+  background: none;
+  border-bottom: none;
+  font-size: 16px;
+  font-weight: 500;
 }
 
 .formPanelBody {
@@ -506,8 +368,8 @@ textarea:focus-visible {
 
 .formGrid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 22px 28px;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px 28px;
 }
 
 .formField {
@@ -1096,41 +958,6 @@ textarea:focus-visible {
     width: min(100% - 36px, 760px);
   }
 
-  .patientTable thead {
-    display: none;
-  }
-
-  .patientTable,
-  .patientTable tbody,
-  .patientTable tr,
-  .patientTable td {
-    display: block;
-  }
-
-  .patientTable tr {
-    padding: 14px 16px;
-    border-bottom: 1px solid var(--border);
-  }
-
-  .patientTable tbody tr:last-child {
-    border-bottom: 0;
-  }
-
-  .patientTable td {
-    padding: 7px 0;
-    display: grid;
-    grid-template-columns: 125px minmax(0, 1fr);
-    gap: 12px;
-    border: 0;
-  }
-
-  .patientTable td::before {
-    content: attr(data-label);
-    color: var(--muted);
-    font-size: 12px;
-    font-weight: 700;
-  }
-
   .stepper {
     gap: 8px;
   }
@@ -1202,20 +1029,8 @@ textarea:focus-visible {
     flex: 1 1 calc(100% - 40px);
   }
 
-  .searchButton {
-    margin-left: 38px;
-  }
-
-  .pagination {
-    gap: 8px;
-  }
-
   .patientListSection {
     margin-top: 38px;
-  }
-
-  .patientTable td {
-    grid-template-columns: 105px minmax(0, 1fr);
   }
 
   .formShell {
@@ -1313,11 +1128,6 @@ textarea:focus-visible {
 
 .rowLink:hover {
   text-decoration: underline;
-}
-
-.rowActions {
-  text-align: right;
-  white-space: nowrap;
 }
 
 .muted {
@@ -1675,48 +1485,14 @@ textarea:focus-visible {
 .pageSubtitle {
   margin: 0;
   color: var(--muted);
-  font-size: 15px;
+  font-size: 13px;
+  font-weight: 400;
 }
 
 .searchBlock {
   display: grid;
   gap: 12px;
   margin-bottom: 28px;
-}
-
-.scopeFilters {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.scopeChip {
-  min-height: 36px;
-  padding: 0 14px;
-  border: 1px solid var(--border-strong);
-  border-radius: 999px;
-  background: #fff;
-  color: var(--muted);
-  font-size: 13px;
-  font-weight: 650;
-  cursor: pointer;
-}
-
-.scopeChip:hover {
-  border-color: var(--green);
-  color: var(--green);
-}
-
-.scopeChipActive {
-  color: #fff;
-  background: var(--green);
-  border-color: var(--green);
-}
-
-.scopeChipActive:hover {
-  color: #fff;
-  background: var(--green-dark);
-  border-color: var(--green-dark);
 }
 
 .emptyStatePanel {
@@ -1736,29 +1512,6 @@ textarea:focus-visible {
   margin: 0;
   max-width: 36rem;
   font-size: 14px;
-}
-
-.archiveStatus {
-  display: inline-flex;
-  align-items: center;
-  min-height: 28px;
-  padding: 0 10px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 700;
-  color: #50575c;
-  background: #eef0f1;
-  border: 1px solid #d1d6d9;
-}
-
-.archiveStatusMerged {
-  color: #5c4a00;
-  background: var(--amber-soft);
-  border-color: var(--amber-border);
-}
-
-.archivedRow td {
-  color: #4a5157;
 }
 
 .formPrimary {
@@ -1838,31 +1591,12 @@ textarea:focus-visible {
 
 .patientTabList {
   display: flex;
-  gap: 4px;
-  margin: 0 auto 20px;
-  max-width: 720px;
-  padding: 4px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--surface-subtle);
-}
-
-.patientTab {
-  flex: 1;
-  min-height: 40px;
+  gap: 22px;
+  margin: 0 0 22px;
+  padding: 0;
   border: none;
-  border-radius: 4px;
-  background: transparent;
-  color: var(--muted);
-  font-size: 14px;
-  font-weight: 650;
-  cursor: pointer;
-}
-
-.patientTabActive {
-  color: var(--green);
-  background: #fff;
-  box-shadow: var(--shadow);
+  border-bottom: 1px solid var(--border);
+  background: none;
 }
 
 .patientHistoryPanel {
@@ -2080,57 +1814,11 @@ textarea:focus-visible {
   }
 }
 
-/* --------------------------------------------------------------------------
-   Family files: one file number covering several people.
-   -------------------------------------------------------------------------- */
-
-/* Register: marks a row whose file number is shared with other patients. */
-.familyBadge {
-  display: inline-flex;
-  align-items: center;
-  margin-left: 8px;
-  padding: 2px 8px;
-  color: var(--green);
-  background: var(--green-soft);
-  border: 1px solid #b7d6c5;
-  border-radius: 999px;
-  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
-  font-size: 11px;
-  font-weight: 650;
-  white-space: nowrap;
-}
-
-/* Patient page: who else is on this file. */
-.filePanel {
-  margin-bottom: 20px;
-}
-
 .filePanel .formPanelHeader {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-}
-
-.filePanelCount {
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 650;
-}
-
-.fileMembers {
-  margin: 0 0 16px;
-  padding: 0;
-  list-style: none;
-  display: grid;
-  gap: 10px;
-}
-
-.fileMembers li {
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
-  flex-wrap: wrap;
 }
 
 /* Onboarding: the file number is fixed when adding to an existing file. */
@@ -2160,4 +1848,360 @@ textarea:focus-visible {
   .successActions .button {
     width: 100%;
   }
+}
+
+/* --------------------------------------------------------------------------
+   Register: the file is the container, its patients nest inside.
+   -------------------------------------------------------------------------- */
+
+/* Dates, ages and phone numbers line up column-wise. */
+.tabularFigures {
+  font-variant-numeric: tabular-nums;
+}
+
+.searchField input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 0;
+  border: none;
+  outline: none;
+  color: var(--text);
+  font-size: 14px;
+  background: transparent;
+}
+
+.searchField:focus-within {
+  border-color: var(--green);
+  box-shadow: 0 0 0 3px var(--green-soft);
+}
+
+.searchClear {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  color: var(--muted);
+  background: none;
+  border: none;
+  border-radius: 999px;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.searchClear:hover {
+  color: var(--text);
+  background: var(--surface-subtle);
+}
+
+/* Three scopes, one grammar: Active · All · Archived. */
+.segmented {
+  display: inline-flex;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-subtle);
+}
+
+.segment {
+  padding: 6px 14px;
+  color: var(--muted);
+  background: none;
+  border: none;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 400;
+  cursor: pointer;
+}
+
+.segment:hover {
+  color: var(--text);
+}
+
+.segmentActive {
+  color: var(--text);
+  background: var(--surface);
+  box-shadow: 0 1px 2px rgba(20, 42, 32, 0.12);
+}
+
+/* Summary sits above the results, on the scope filter's row. */
+.resultsBar {
+  margin: 18px 0 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.resultSummary {
+  margin: 0 0 0 auto;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.expandAllControls {
+  display: flex;
+  gap: 14px;
+}
+
+.linkButton {
+  padding: 0;
+  color: var(--muted);
+  background: none;
+  border: none;
+  font-size: 13px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.linkButton:hover {
+  color: var(--text);
+}
+
+.fileCards {
+  display: grid;
+  gap: 10px;
+}
+
+.fileCard {
+  background: var(--surface);
+  border: 0.5px solid var(--border-strong);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.fileCardHeader {
+  width: 100%;
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text);
+  background: none;
+  border: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.fileCardHeader:hover {
+  background: var(--surface-subtle);
+}
+
+.fileChevron {
+  flex: none;
+  color: var(--muted);
+  transform: rotate(0deg);
+  transition: transform 150ms ease;
+}
+
+.fileChevronOpen {
+  transform: rotate(90deg);
+}
+
+.fileCardIcon {
+  flex: none;
+  color: var(--muted);
+}
+
+.fileCardNumber {
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.fileCardCount {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.fileCardPhone {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.fileCardFooter {
+  padding: 12px 16px 14px 56px;
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  flex-wrap: wrap;
+  border-top: 0.5px solid var(--border);
+}
+
+.fileCardNote {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+/* A patient inside a file. The whole row is the link. */
+.patientRow {
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  color: inherit;
+  text-decoration: none;
+  border-top: 0.5px solid var(--border);
+}
+
+.fileCard > .patientRow:first-child {
+  border-top: none;
+}
+
+/* Indented so the nesting under the file header is unambiguous. */
+.patientRowIndented {
+  padding-left: 40px;
+}
+
+a.patientRow:hover {
+  background: var(--surface-subtle);
+}
+
+.patientRowCurrent {
+  background: var(--sage);
+}
+
+.patientRowMain {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* Names wrap rather than truncate. */
+.patientRowName {
+  font-size: 14px;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+.patientRowMeta {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.patientRowFlags {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.patientRowViewing {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.patientRowChevron {
+  flex: none;
+  color: var(--border-strong);
+}
+
+/* Identity present is categorical (grey); missing is a data gap (amber). */
+.identityFlag {
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.identityFlagMissing {
+  color: var(--amber);
+}
+
+/* An empty state is an invitation to act. */
+.emptyResults {
+  margin-top: 18px;
+  padding: 40px 24px;
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  text-align: center;
+  background: var(--surface);
+  border: 0.5px solid var(--border-strong);
+  border-radius: 12px;
+}
+
+.emptyResultsHead {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.emptyResultsBody {
+  margin: 0 0 10px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+/* Patient page header meta: 29 Dec 1994 · 083 927 4199 */
+.recordMeta {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.optionalMark {
+  color: var(--muted);
+  font-weight: 400;
+}
+
+/* Record-level tabs, left-aligned and underlined. */
+.patientTab {
+  padding: 10px 2px;
+  color: var(--muted);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  font-size: 14px;
+  font-weight: 400;
+  cursor: pointer;
+}
+
+.patientTabActive {
+  color: var(--text);
+  border-bottom-color: var(--text);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fileChevron {
+    transition: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .resultsBar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .resultSummary {
+    margin-left: 0;
+  }
+
+  .patientRowIndented {
+    padding-left: 28px;
+  }
+
+  .fileCardFooter {
+    padding-left: 28px;
+  }
+
+  .fileCardPhone {
+    display: none;
+  }
+}
+
+/* An absent identity document is an open data gap, not a styling flourish. */
+.identityGap {
+  padding: 14px 16px;
+  display: grid;
+  gap: 14px;
+  background: var(--amber-soft);
+  border-left: 3px solid var(--amber-border);
+  border-radius: 0 var(--radius) var(--radius) 0;
 }

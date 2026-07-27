@@ -1,5 +1,53 @@
 # Changelog
 
+## 2026-07-28 — Register rebuild, and a coded identity reason
+
+**Register (`/patients`)**
+- **The file is now the container.** Results group by file number and render as
+  expandable cards, so `2014` and its shared phone appear **once** with the
+  three patients nested inside, instead of repeating on every row — a repeated
+  identifier reads as a duplicate record.
+- Files with one matching patient render flat, no expander; the file number
+  moves inline into the meta line (`3 Mar 1974 · File 1877`).
+- File headers are real `<button>`s with `aria-expanded`/`aria-controls`, so
+  Enter and Space work and screen readers get the state. Chevron rotation
+  respects `prefers-reduced-motion`.
+- Search is a single 38px input with an inline clear; the separate Search and
+  Clear buttons are gone. Scope pills become `Active · All · Archived`.
+- Result summary (`6 patients across 3 files`) moves above the results and is
+  announced with `aria-live`.
+- **Removed:** the Status column and the constant `Cash patient` chip, the
+  per-row Open button, the repeated phone column, the `3 people` badge, and
+  pagination (with it, the sortable column headers and the tablet page-size
+  cookie).
+
+**Patient page**
+- One navigation system: `Back to patients` is gone, and Details/History move
+  under the patient name as a left-aligned underlined tab row.
+- Header shows `29 Dec 1994 · 083 927 4199`; `Save changes` is the page's
+  primary action and sits in the header.
+- The file-membership block moves **below** the patient's own details, lists
+  every member including the one being viewed (marked `viewing now`), and is
+  collapsed by default.
+- Section header bands removed in favour of plain headings; fields are a
+  responsive `minmax(200px, 1fr)` grid.
+- Red asterisks removed everywhere — optional fields are marked instead.
+
+**Identity reason is now a closed list** (the data-quality fix)
+- `no_identity_reason` free text becomes `no_identity_reason_code` (7 values),
+  an **optional** `no_identity_note`, and an `ask_identity_again` flag that
+  defaults on for reasons that resolve themselves later.
+- A note is required only for `other`. An always-required free-text box is what
+  produced `Nog applicable` in the first place.
+- Backfill maps only unambiguous values and preserves everything else verbatim
+  in the note under `other`. The legacy column is **kept and still written**
+  until the practice has reviewed the backfill.
+
+**Shared formatting**
+- `formatDate` (`29 Dec 1994`), `formatPhone` (`083 927 4199`) and initials now
+  live in `src/lib/format.ts` and are used by both screens, which previously
+  formatted the same date differently.
+
 ## 2026-07-27 — Family files (several people on one file number)
 
 - **One file number can now cover a household.** `patients.file_number` is no

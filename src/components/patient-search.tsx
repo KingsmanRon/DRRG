@@ -1,24 +1,33 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { SearchIcon } from "./icons";
 
 export type PatientListScope = "active" | "include_archived" | "archived_only";
 
-// Live patient search: filters as you type (debounced). Query and list scope
-// live in the URL so results stay shareable and server-rendered.
+/** Three scopes, one grammar (§3.3). Stored values are unchanged. */
+const SCOPES: { value: PatientListScope; label: string }[] = [
+  { value: "active", label: "Active" },
+  { value: "include_archived", label: "All" },
+  { value: "archived_only", label: "Archived" },
+];
+
+/**
+ * Live patient search. Query and scope live in the URL so results stay
+ * shareable and server-rendered.
+ *
+ * Search quality is the practice's main defence against duplicate files —
+ * staff open a second file when they cannot find the first — so the query
+ * matches file number, first names, surname and phone, partial and
+ * case-insensitively.
+ */
 export function PatientSearch({
   initialQuery,
-  sort,
-  dir,
   scope = "active",
   showArchiveFilters = false,
 }: {
   initialQuery: string;
-  sort?: string;
-  dir?: string;
   scope?: PatientListScope;
   showArchiveFilters?: boolean;
 }) {
@@ -26,12 +35,11 @@ export function PatientSearch({
   const [value, setValue] = useState(initialQuery);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const skipDebounceRef = useRef(true);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   function targetHref(query: string, nextScope: PatientListScope = scope): string {
     const params = new URLSearchParams();
     if (query.trim()) params.set("q", query.trim().slice(0, 120));
-    if (sort) params.set("sort", sort);
-    if (dir) params.set("dir", dir);
     if (nextScope !== "active") params.set("scope", nextScope);
     const search = params.toString();
     return search ? `/patients?${search}` : "/patients";
@@ -55,60 +63,55 @@ export function PatientSearch({
     router.replace(targetHref(value));
   }
 
+  function clear() {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    setValue("");
+    skipDebounceRef.current = true;
+    router.replace(targetHref("", scope));
+    inputRef.current?.focus();
+  }
+
   function setScope(next: PatientListScope) {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     router.replace(targetHref(value, next));
   }
 
-  const clearHref = scope === "active" ? "/patients" : `/patients?scope=${scope}`;
-
   return (
     <div className="searchBlock">
       <form className="searchField" onSubmit={submit} role="search">
-        <label className="srOnly" htmlFor="patient-search">Search patients</label>
-        <SearchIcon />
+        <label className="srOnly" htmlFor="patient-search">
+          Search patients
+        </label>
+        <SearchIcon size={18} />
         <input
           id="patient-search"
           name="q"
+          ref={inputRef}
           value={value}
           onChange={(event) => setValue(event.target.value)}
-          placeholder="Name, address, file number, phone or ID"
+          placeholder="Search by name, file number, or phone"
           autoComplete="off"
         />
-        <button className="button buttonSecondary searchButton" type="submit">Search</button>
-        {initialQuery && (
-          <Link className="clearSearch" href={clearHref} onClick={() => setValue("")}>
-            Clear
-          </Link>
+        {value && (
+          <button type="button" className="searchClear" onClick={clear} aria-label="Clear search">
+            ×
+          </button>
         )}
       </form>
 
       {showArchiveFilters && (
-        <div className="scopeFilters" role="group" aria-label="Which patient files to show">
-          <button
-            type="button"
-            className={`scopeChip${scope === "active" ? " scopeChipActive" : ""}`}
-            aria-pressed={scope === "active"}
-            onClick={() => setScope("active")}
-          >
-            Active only
-          </button>
-          <button
-            type="button"
-            className={`scopeChip${scope === "include_archived" ? " scopeChipActive" : ""}`}
-            aria-pressed={scope === "include_archived"}
-            onClick={() => setScope("include_archived")}
-          >
-            Include archived
-          </button>
-          <button
-            type="button"
-            className={`scopeChip${scope === "archived_only" ? " scopeChipActive" : ""}`}
-            aria-pressed={scope === "archived_only"}
-            onClick={() => setScope("archived_only")}
-          >
-            Archived only
-          </button>
+        <div className="segmented" role="group" aria-label="Which patient files to show">
+          {SCOPES.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              className={`segment${scope === option.value ? " segmentActive" : ""}`}
+              aria-pressed={scope === option.value}
+              onClick={() => setScope(option.value)}
+            >
+              {option.label}
+            </button>
+          ))}
         </div>
       )}
     </div>
