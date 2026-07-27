@@ -8,15 +8,6 @@ export type Json = string | number | boolean | null | { [key: string]: Json | un
 
 export type StaffRole = "doctor" | "staff";
 export type PatientIdentityType = "sa_id" | "passport" | "foreign_document" | "none";
-export type NoIdentityReasonCode =
-  | "not_brought"
-  | "newborn_no_certificate"
-  | "lost_or_stolen"
-  | "home_affairs_pending"
-  | "asylum_permit_pending"
-  | "declined"
-  | "other";
-
 export type PatientStatus = "active" | "archived";
 export type SignatureType = "typed_name" | "drawn_signature";
 export type DuplicateReviewStatus = "flagged" | "not_duplicate" | "merged";
@@ -65,9 +56,6 @@ export type Database = {
           identity_number: string | null;
           identity_country: string | null;
           no_identity_reason: string | null;
-          no_identity_reason_code: NoIdentityReasonCode | null;
-          no_identity_note: string | null;
-          ask_identity_again: boolean;
           phone: string | null;
           phone_normalized: string | null;
           email: string | null;
@@ -91,9 +79,6 @@ export type Database = {
           identity_number?: string | null;
           identity_country?: string | null;
           no_identity_reason?: string | null;
-          no_identity_reason_code?: NoIdentityReasonCode | null;
-          no_identity_note?: string | null;
-          ask_identity_again?: boolean;
           phone?: string | null;
           email?: string | null;
           residential_address?: string | null;
@@ -116,9 +101,6 @@ export type Database = {
           identity_number?: string | null;
           identity_country?: string | null;
           no_identity_reason?: string | null;
-          no_identity_reason_code?: NoIdentityReasonCode | null;
-          no_identity_note?: string | null;
-          ask_identity_again?: boolean;
           phone?: string | null;
           email?: string | null;
           residential_address?: string | null;

@@ -19,8 +19,6 @@ export function PatientDetailTabs({
 
   return (
     <div className="patientTabs">
-      {/* Left-aligned under the record, not centred: these tabs belong to the
-          patient, they are not page-level navigation. */}
       <div className="patientTabList" role="tablist" aria-label="Patient sections">
         <button
           type="button"

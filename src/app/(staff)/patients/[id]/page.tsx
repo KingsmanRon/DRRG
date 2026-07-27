@@ -6,7 +6,6 @@ import { PatientEditForm, type DuplicateNotice, type PatientRecord } from "@/com
 import { PatientRestoreButton } from "@/components/patient-restore-button";
 import { WarningIcon } from "@/components/icons";
 import { requireStaffPage } from "@/lib/auth/session";
-import { formatDate, formatPhone } from "@/lib/format";
 import { mapAuditRows } from "@/lib/patients/audit";
 import { createClient } from "@/lib/supabase/server";
 
@@ -16,6 +15,11 @@ type PatientRow = PatientRecord & {
   merged_into: string | null;
   archived_at: string | null;
 };
+
+function formatDate(value: string | null): string {
+  if (!value) return "";
+  return new Date(value).toLocaleDateString("en-ZA", { year: "numeric", month: "long", day: "numeric" });
+}
 
 async function loadAuditTrail(patientId: string) {
   const supabase = await createClient();
@@ -54,7 +58,7 @@ export default async function PatientDetailPage({
   const { data, error } = await supabase
     .from("patients")
     .select(
-      "id, file_number, first_names, surname, date_of_birth, identity_type, identity_number, identity_country, no_identity_reason_code, no_identity_note, ask_identity_again, phone, email, residential_address, no_contact_reason, status, merged_into, archived_at",
+      "id, file_number, first_names, surname, date_of_birth, identity_type, identity_number, identity_country, no_identity_reason, phone, email, residential_address, no_contact_reason, status, merged_into, archived_at",
     )
     .eq("id", id)
     .maybeSingle();
@@ -115,7 +119,11 @@ export default async function PatientDetailPage({
               </Link>
             ) : canRestore ? (
               <PatientRestoreButton patientId={patient.id} fileNumber={patient.file_number} />
-            ) : null}
+            ) : (
+              <Link className="button buttonSecondary" href="/patients">
+                Back to patients
+              </Link>
+            )}
           </div>
         </div>
 
@@ -125,7 +133,7 @@ export default async function PatientDetailPage({
             <dl className="archivedDetails">
               <div>
                 <dt>Date of birth</dt>
-                <dd>{formatDate(patient.date_of_birth)}</dd>
+                <dd>{patient.date_of_birth}</dd>
               </div>
               <div>
                 <dt>Identity</dt>
@@ -137,7 +145,7 @@ export default async function PatientDetailPage({
               </div>
               <div>
                 <dt>Phone</dt>
-                <dd>{patient.phone ? formatPhone(patient.phone) : "Not on file"}</dd>
+                <dd>{patient.phone ?? "Not on file"}</dd>
               </div>
               <div>
                 <dt>Email</dt>
@@ -170,13 +178,13 @@ export default async function PatientDetailPage({
     );
   }
 
-  // Everyone on this file number, including the patient being viewed — the
-  // membership block lists all members and marks the current one.
+  // Everyone else on this file number: one file can cover a whole household.
   const { data: householdRows } = await supabase
     .from("patients")
     .select("id, first_names, surname, date_of_birth")
     .eq("file_number", patient.file_number)
     .eq("status", "active")
+    .neq("id", id)
     .order("date_of_birth", { ascending: true });
 
   const { data: flaggedRows } = await supabase

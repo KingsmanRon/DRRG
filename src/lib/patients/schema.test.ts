@@ -4,7 +4,6 @@ import {
   ContactDetailsStep,
   PersonalDetailsStep,
   PatientInput,
-  defaultAskAgain,
   fieldErrorsFromZod,
   normalizePatientInput,
 } from "./schema";
@@ -35,52 +34,14 @@ describe("PatientInput", () => {
     expect(PatientInput.safeParse(base).success).toBe(true);
   });
 
-  it("accepts a patient with no identity document and a coded reason", () => {
+  it("accepts a foreign patient with no identity document", () => {
     const result = PatientInput.safeParse({
       ...base,
       identity_type: "none",
       identity_number: "",
-      no_identity_reason_code: "home_affairs_pending",
+      no_identity_reason: "Passport application pending",
     });
     expect(result.success).toBe(true);
-  });
-
-  it("does not require a note for a coded reason", () => {
-    // The old free-text field was always required, which is what produced
-    // values like "Nog applicable".
-    const result = PatientInput.safeParse({
-      ...base,
-      identity_type: "none",
-      identity_number: "",
-      no_identity_reason_code: "not_brought",
-      no_identity_note: "",
-    });
-    expect(result.success).toBe(true);
-  });
-
-  it("requires a note only when the reason is 'other'", () => {
-    const result = PatientInput.safeParse({
-      ...base,
-      identity_type: "none",
-      identity_number: "",
-      no_identity_reason_code: "other",
-      no_identity_note: "",
-    });
-    expect(result.success).toBe(false);
-    if (result.success) return;
-    expect(fieldErrorsFromZod(result.error).no_identity_note).toBeTruthy();
-  });
-
-  it("rejects no-document patients with no reason selected", () => {
-    const result = PatientInput.safeParse({
-      ...base,
-      identity_type: "none",
-      identity_number: "",
-      no_identity_reason_code: "",
-    });
-    expect(result.success).toBe(false);
-    if (result.success) return;
-    expect(fieldErrorsFromZod(result.error).no_identity_reason_code).toBeTruthy();
   });
 
   it("accepts a patient with no contact details when a reason is recorded", () => {
@@ -167,23 +128,6 @@ describe("PatientInput", () => {
     expect(result.success).toBe(false);
     if (result.success) return;
     expect(fieldErrorsFromZod(result.error).file_number).toBeTruthy();
-  });
-});
-
-describe("defaultAskAgain", () => {
-  it("flags follow-up for reasons that resolve themselves later", () => {
-    for (const code of ["not_brought", "newborn_no_certificate", "home_affairs_pending", "asylum_permit_pending"] as const) {
-      expect(defaultAskAgain(code)).toBe(true);
-    }
-  });
-
-  it("does not flag follow-up when the patient declined", () => {
-    expect(defaultAskAgain("declined")).toBe(false);
-  });
-
-  it("does not flag follow-up for lost documents or 'other'", () => {
-    expect(defaultAskAgain("lost_or_stolen")).toBe(false);
-    expect(defaultAskAgain("other")).toBe(false);
   });
 });
 

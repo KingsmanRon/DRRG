@@ -67,31 +67,11 @@ South African mobile numbers are normalised so local `082...` and international 
 
 Patient records are never hard deleted (HPCSA requires clinical records to be retained). Merging archives the losing record and keeps it queryable for audit. Staff can also **archive** a single file that was registered in error (with a reason); **doctors** can **restore** manually archived files. Records archived by a merge cannot be restored — open the kept file instead.
 
-**Doctors** can filter the patient list: Active · All · Archived. Reception staff always see the active register.
+**Doctors** can filter the patient list: Active only · Include archived · Archived only. Reception staff always see the active register.
 
 Scoring for production decisions runs in Postgres (`private.duplicate_match` /
 `find_possible_duplicates`). The TypeScript helpers in `src/lib/patients/duplicate-score.ts`
 format UI banners and lock the weight/tier contract with unit tests.
-
-## Display conventions
-
-Dates render as `29 Dec 1994` and phone numbers as `083 927 4199` everywhere,
-via `src/lib/format.ts`. Storage formats are unchanged (ISO dates, digits).
-Deliberately **not** shown anywhere: a computed age — the date of birth alone
-identifies the patient.
-
-Brand green marks the single primary action on a page (New patient on the
-register, Save changes on a patient). Amber means a data gap. Everything
-categorical is neutral grey.
-
-## Identity reasons
-
-When a patient has no identity document, the reason is a closed list
-(`no_identity_reason_code`), not free text: a mandatory text box produced
-unqueryable values like "Nog applicable". A free-text note is optional except
-for `Other`, and `ask_identity_again` flags the reasons that resolve at a later
-visit. The legacy `no_identity_reason` column is retained and still written
-until the practice has reviewed the backfill — do not read it in new code.
 
 ## Local setup
 

@@ -4,14 +4,11 @@ import Link from "next/link";
 import { useState, type FormEvent } from "react";
 import { CONSENT_TEXT, CONSENT_TEXT_HASH, CONSENT_VERSION } from "@/lib/consent";
 import {
-  NO_IDENTITY_REASONS,
   ConsentStep,
   ContactDetailsStep,
   IdentityStep,
   PersonalDetailsStep,
-  defaultAskAgain,
   fieldErrorsFromZod,
-  type NoIdentityReasonCode,
 } from "@/lib/patients/schema";
 import { WarningIcon } from "./icons";
 
@@ -50,9 +47,7 @@ type Draft = {
   identity_type: IdentityType;
   identity_number: string;
   identity_country: string;
-  no_identity_reason_code: NoIdentityReasonCode | "";
-  no_identity_note: string;
-  ask_identity_again: boolean;
+  no_identity_reason: string;
   phone: string;
   email: string;
   residential_address: string;
@@ -73,9 +68,7 @@ function initialDraft(fileContext: FileContext | null): Draft {
     identity_type: "sa_id",
     identity_number: "",
     identity_country: "ZA",
-    no_identity_reason_code: "",
-    no_identity_note: "",
-    ask_identity_again: false,
+    no_identity_reason: "",
     // Shared household contact details carry over; each person can still be
     // given their own before saving.
     phone: fileContext?.phone ?? "",
@@ -135,9 +128,7 @@ export function PatientOnboardingForm({
       identity_country: ["passport", "foreign_document"].includes(draft.identity_type)
         ? draft.identity_country.toUpperCase()
         : "",
-      no_identity_reason_code: draft.identity_type === "none" ? draft.no_identity_reason_code : "",
-      no_identity_note: draft.identity_type === "none" ? draft.no_identity_note : "",
-      ask_identity_again: draft.identity_type === "none" ? draft.ask_identity_again : false,
+      no_identity_reason: draft.identity_type === "none" ? draft.no_identity_reason : "",
       date_of_birth: draft.date_of_birth || "1900-01-01",
     };
   }
@@ -264,9 +255,7 @@ export function PatientOnboardingForm({
         join_file: joiningFile,
         identity_country: identity.identity_country,
         identity_number: identity.identity_number,
-        no_identity_reason_code: identity.no_identity_reason_code,
-      no_identity_note: identity.no_identity_note,
-      ask_identity_again: identity.ask_identity_again,
+        no_identity_reason: identity.no_identity_reason,
         consent_version: CONSENT_VERSION,
         consent_text_hash: CONSENT_TEXT_HASH,
         signature_type: "typed_name",
@@ -383,17 +372,17 @@ export function PatientOnboardingForm({
                 </>
               )}
               <div className="formField">
-                <label htmlFor="first_names">First names</label>
+                <label htmlFor="first_names">First names <span className="required">*</span></label>
                 <input id="first_names" value={draft.first_names} onChange={(event) => update("first_names", event.target.value)} autoComplete="given-name" />
                 <FieldError message={errors.first_names} />
               </div>
               <div className="formField">
-                <label htmlFor="surname">Surname</label>
+                <label htmlFor="surname">Surname <span className="required">*</span></label>
                 <input id="surname" value={draft.surname} onChange={(event) => update("surname", event.target.value)} autoComplete="family-name" />
                 <FieldError message={errors.surname} />
               </div>
               <div className="formField">
-                <label htmlFor="date_of_birth">Date of birth</label>
+                <label htmlFor="date_of_birth">Date of birth <span className="required">*</span></label>
                 <input id="date_of_birth" type="date" value={draft.date_of_birth} onChange={(event) => update("date_of_birth", event.target.value)} />
                 <FieldError message={errors.date_of_birth} />
               </div>
@@ -407,7 +396,7 @@ export function PatientOnboardingForm({
               <h2 className="formPanelHeader" id="identity-heading">Identity</h2>
               <div className="formPanelBody formGrid">
                 <div className="formField">
-                  <label htmlFor="identity_type">Identity document</label>
+                  <label htmlFor="identity_type">Identity document <span className="required">*</span></label>
                   <select id="identity_type" value={draft.identity_type} onChange={(event) => update("identity_type", event.target.value as IdentityType)}>
                     <option value="sa_id">South African ID</option>
                     <option value="passport">Passport</option>
@@ -419,7 +408,7 @@ export function PatientOnboardingForm({
 
                 {draft.identity_type !== "none" && (
                   <div className="formField">
-                    <label htmlFor="identity_number">Document number</label>
+                    <label htmlFor="identity_number">Document number <span className="required">*</span></label>
                     <input id="identity_number" value={draft.identity_number} onChange={(event) => update("identity_number", event.target.value)} autoComplete="off" />
                     <FieldError message={errors.identity_number} />
                   </div>
@@ -427,7 +416,7 @@ export function PatientOnboardingForm({
 
                 {["passport", "foreign_document"].includes(draft.identity_type) && (
                   <div className="formField">
-                    <label htmlFor="identity_country">Issuing country code</label>
+                    <label htmlFor="identity_country">Issuing country code <span className="required">*</span></label>
                     <input id="identity_country" value={draft.identity_country} onChange={(event) => update("identity_country", event.target.value.toUpperCase())} maxLength={2} placeholder="ZW" />
                     <p className="fieldHelp">Use the two letter country code shown on the document.</p>
                     <FieldError message={errors.identity_country} />
@@ -435,48 +424,10 @@ export function PatientOnboardingForm({
                 )}
 
                 {draft.identity_type === "none" && (
-                  <div className="formField fullWidth identityGap">
-                    <label htmlFor="no_identity_reason_code">Why is there no document?</label>
-                    <select
-                      id="no_identity_reason_code"
-                      value={draft.no_identity_reason_code}
-                      onChange={(event) => {
-                        const code = event.target.value as NoIdentityReasonCode | "";
-                        update("no_identity_reason_code", code);
-                        update("ask_identity_again", defaultAskAgain(code));
-                      }}
-                    >
-                      <option value="">Select a reason</option>
-                      {NO_IDENTITY_REASONS.map((reason) => (
-                        <option key={reason.value} value={reason.value}>{reason.label}</option>
-                      ))}
-                    </select>
-                    <FieldError message={errors.no_identity_reason_code} />
-
-                    <div className="formField">
-                      <label htmlFor="no_identity_note">
-                        Note{" "}
-                        {draft.no_identity_reason_code === "other" ? null : (
-                          <span className="optionalMark">(optional)</span>
-                        )}
-                      </label>
-                      <textarea
-                        id="no_identity_note"
-                        value={draft.no_identity_note}
-                        onChange={(event) => update("no_identity_note", event.target.value)}
-                        placeholder={draft.no_identity_reason_code === "other" ? "Describe the reason" : "Anything else worth recording"}
-                      />
-                      <FieldError message={errors.no_identity_note} />
-                    </div>
-
-                    <label className="checkboxField">
-                      <input
-                        type="checkbox"
-                        checked={draft.ask_identity_again}
-                        onChange={(event) => update("ask_identity_again", event.target.checked)}
-                      />
-                      <span>Ask again at next visit</span>
-                    </label>
+                  <div className="formField fullWidth">
+                    <label htmlFor="no_identity_reason">Reason no document is available <span className="required">*</span></label>
+                    <textarea id="no_identity_reason" value={draft.no_identity_reason} onChange={(event) => update("no_identity_reason", event.target.value)} placeholder="For example, passport application pending" />
+                    <FieldError message={errors.no_identity_reason} />
                   </div>
                 )}
               </div>
@@ -491,17 +442,17 @@ export function PatientOnboardingForm({
             <h2 className="formPanelHeader" id="contact-heading">Contact details</h2>
             <div className="formPanelBody formGrid">
               <div className="formField">
-                <label htmlFor="phone">Mobile number</label>
+                <label htmlFor="phone">Mobile number {draft.no_contact_details ? null : <span className="required">*</span>}</label>
                 <input id="phone" type="tel" value={draft.phone} onChange={(event) => update("phone", event.target.value)} autoComplete="tel" />
                 <FieldError message={errors.phone} />
               </div>
               <div className="formField">
-                <label htmlFor="email">Email address <span className="optionalMark">(optional)</span></label>
+                <label htmlFor="email">Email address</label>
                 <input id="email" type="email" value={draft.email} onChange={(event) => update("email", event.target.value)} autoComplete="email" />
                 <FieldError message={errors.email} />
               </div>
               <div className="formField fullWidth">
-                <label htmlFor="residential_address">Residential address</label>
+                <label htmlFor="residential_address">Residential address {draft.no_contact_details ? null : <span className="required">*</span>}</label>
                 <textarea id="residential_address" value={draft.residential_address} onChange={(event) => update("residential_address", event.target.value)} autoComplete="street-address" />
                 <p className="fieldHelp">Searchable — patients who give different names at the same address surface together. Address is not a unique identity, so genuinely different people at one address stay as separate files.</p>
                 <FieldError message={errors.residential_address} />
@@ -513,7 +464,7 @@ export function PatientOnboardingForm({
               </label>
               {draft.no_contact_details && (
                 <div className="formField fullWidth">
-                  <label htmlFor="no_contact_reason">Reason there are no contact details</label>
+                  <label htmlFor="no_contact_reason">Reason there are no contact details <span className="required">*</span></label>
                   <textarea id="no_contact_reason" value={draft.no_contact_reason} onChange={(event) => update("no_contact_reason", event.target.value)} placeholder="For example, treated on the day with no phone or fixed address" />
                   <FieldError message={errors.no_contact_reason} />
                 </div>
@@ -535,7 +486,7 @@ export function PatientOnboardingForm({
                   </label>
                   <FieldError message={errors.duplicate_reviewed} />
                   <div className="formField fullWidth">
-                    <label htmlFor="duplicate_review_reason">Reason for creating a separate patient</label>
+                    <label htmlFor="duplicate_review_reason">Reason for creating a separate patient <span className="required">*</span></label>
                     <textarea id="duplicate_review_reason" value={draft.duplicate_review_reason} onChange={(event) => update("duplicate_review_reason", event.target.value)} />
                     <FieldError message={errors.duplicate_review_reason} />
                   </div>
@@ -548,7 +499,7 @@ export function PatientOnboardingForm({
               <div className="formPanelBody formGrid">
                 <p className="consentText fullWidth">{CONSENT_TEXT}</p>
                 <div className="formField fullWidth">
-                  <label htmlFor="signature_value">Patient full name as signature</label>
+                  <label htmlFor="signature_value">Patient full name as signature <span className="required">*</span></label>
                   <input id="signature_value" value={draft.signature_value} onChange={(event) => update("signature_value", event.target.value)} />
                   <FieldError message={errors.signature_value} />
                 </div>

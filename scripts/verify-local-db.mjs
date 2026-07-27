@@ -44,7 +44,7 @@ const patient = {
   identity_type: "sa_id",
   identity_number: "8001015009087",
   identity_country: "",
-  no_identity_reason_code: "",
+  no_identity_reason: "",
   phone: "+27 82 123 4567",
   email: "nomsa@example.test",
   residential_address: "1 Main Road, Johannesburg",
@@ -60,7 +60,7 @@ const consent = {
 const directInsert = await staff.from("patients").insert({
   ...patient,
   identity_country: null,
-  no_identity_reason_code: null,
+  no_identity_reason: null,
   created_by: created.user.id,
   updated_by: created.user.id,
 });
@@ -129,7 +129,7 @@ const noIdentityPatient = {
   ...patient,
   identity_type: "none",
   identity_number: "",
-  no_identity_reason_code: "home_affairs_pending",
+  no_identity_reason: "Passport application pending",
   email: "nomsa.second@example.test",
 };
 const missingReview = await staff.rpc("onboard_patient", {

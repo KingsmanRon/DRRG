@@ -113,21 +113,3 @@ export function ShieldLockIcon({ size = 16, className }: IconProps) {
     </svg>
   );
 }
-
-export function ChevronRightIcon({ size = 16, className }: IconProps) {
-  return (
-    <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="m9 5 7 7-7 7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-export function UsersIcon({ size = 18, className }: IconProps) {
-  return (
-    <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <circle cx="9" cy="8" r="3.2" stroke="currentColor" strokeWidth="1.7" />
-      <path d="M3.5 19c0-3 2.5-4.8 5.5-4.8s5.5 1.8 5.5 4.8" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
-      <path d="M16.5 5.6a3.2 3.2 0 0 1 0 5.9M18 13.6c2.2.5 3.6 2.1 3.6 4.4" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
-    </svg>
-  );
-}

@@ -8,47 +8,6 @@ export const IdentityType = z.enum([
   "none",
 ]);
 
-/**
- * Why no identity document is on file, as a closed list.
- *
- * Replaces a mandatory free-text box that produced values like "Nog
- * applicable" — a required text field asks staff to type *something*, so they
- * type anything. Only `other` requires a note.
- */
-export const NoIdentityReasonCode = z.enum([
-  "not_brought",
-  "newborn_no_certificate",
-  "lost_or_stolen",
-  "home_affairs_pending",
-  "asylum_permit_pending",
-  "declined",
-  "other",
-]);
-
-export type NoIdentityReasonCode = z.infer<typeof NoIdentityReasonCode>;
-
-export const NO_IDENTITY_REASONS: { value: NoIdentityReasonCode; label: string }[] = [
-  { value: "not_brought", label: "Not brought to this visit" },
-  { value: "newborn_no_certificate", label: "Newborn — birth certificate not yet issued" },
-  { value: "lost_or_stolen", label: "Document lost or stolen" },
-  { value: "home_affairs_pending", label: "Home Affairs application in progress" },
-  { value: "asylum_permit_pending", label: "Asylum or refugee permit pending" },
-  { value: "declined", label: "Patient declined to provide" },
-  { value: "other", label: "Other — add a note" },
-];
-
-/** Reasons that resolve themselves later, so a follow-up is worth flagging. */
-const ASK_AGAIN_BY_DEFAULT: NoIdentityReasonCode[] = [
-  "not_brought",
-  "newborn_no_certificate",
-  "home_affairs_pending",
-  "asylum_permit_pending",
-];
-
-export function defaultAskAgain(code: NoIdentityReasonCode | ""): boolean {
-  return ASK_AGAIN_BY_DEFAULT.includes(code as NoIdentityReasonCode);
-}
-
 const optionalEmail = z.union([
   z.literal(""),
   z.email("Enter a valid email address."),
@@ -62,9 +21,7 @@ const patientCoreShape = {
   identity_type: IdentityType,
   identity_number: z.string().trim().max(80).default(""),
   identity_country: z.string().trim().toUpperCase().max(2).default(""),
-  no_identity_reason_code: z.union([NoIdentityReasonCode, z.literal("")]).default(""),
-  no_identity_note: z.string().trim().max(250).default(""),
-  ask_identity_again: z.boolean().default(false),
+  no_identity_reason: z.string().trim().max(250).default(""),
   // Phone and address are validated conditionally in refineContact: both are
   // required unless "no contact details on file" is recorded with a reason.
   phone: z.string().trim().max(20).default(""),
@@ -79,8 +36,7 @@ type PatientCore = {
   identity_type: z.infer<typeof IdentityType>;
   identity_number: string;
   identity_country: string;
-  no_identity_reason_code: NoIdentityReasonCode | "";
-  no_identity_note: string;
+  no_identity_reason: string;
 };
 
 function refineDateOfBirth(dateOfBirth: string, context: z.RefinementCtx) {
@@ -106,20 +62,11 @@ function refinePatientCore(value: PatientCore, context: z.RefinementCtx) {
         message: "Do not enter document details when no document is selected.",
       });
     }
-    if (!value.no_identity_reason_code) {
+    if (value.no_identity_reason.length < 3) {
       context.addIssue({
         code: "custom",
-        path: ["no_identity_reason_code"],
-        message: "Select why no identity document is on file.",
-      });
-    }
-    // A note is required only for "Other". Requiring it always is what
-    // produced junk values in the first place.
-    if (value.no_identity_reason_code === "other" && value.no_identity_note.trim().length < 3) {
-      context.addIssue({
-        code: "custom",
-        path: ["no_identity_note"],
-        message: "Add a short note describing the reason.",
+        path: ["no_identity_reason"],
+        message: "Explain why no identity document is available.",
       });
     }
   }
@@ -301,9 +248,7 @@ export const IdentityStep = z
     identity_type: patientCoreShape.identity_type,
     identity_number: patientCoreShape.identity_number,
     identity_country: patientCoreShape.identity_country,
-    no_identity_reason_code: patientCoreShape.no_identity_reason_code,
-    no_identity_note: patientCoreShape.no_identity_note,
-    ask_identity_again: patientCoreShape.ask_identity_again,
+    no_identity_reason: patientCoreShape.no_identity_reason,
     // date_of_birth not needed for identity refine except DOB checks already done
     date_of_birth: z.iso.date().optional().default("1900-01-01"),
   })
@@ -314,8 +259,7 @@ export const IdentityStep = z
         identity_type: value.identity_type,
         identity_number: value.identity_number,
         identity_country: value.identity_country,
-        no_identity_reason_code: value.no_identity_reason_code,
-        no_identity_note: value.no_identity_note,
+        no_identity_reason: value.no_identity_reason,
       },
       context,
     );
@@ -374,7 +318,6 @@ function normalizeCore<
   T extends PatientCore & {
     first_names: string;
     surname: string;
-    ask_identity_again: boolean;
     phone: string;
     email: string;
     residential_address: string;
@@ -394,12 +337,7 @@ function normalizeCore<
       input.identity_type === "passport" || input.identity_type === "foreign_document"
         ? input.identity_country.trim().toUpperCase()
         : "",
-    no_identity_reason_code: input.identity_type === "none" ? input.no_identity_reason_code : "",
-    no_identity_note:
-      input.identity_type === "none" && input.no_identity_reason_code === "other"
-        ? input.no_identity_note.trim()
-        : "",
-    ask_identity_again: input.identity_type === "none" ? input.ask_identity_again : false,
+    no_identity_reason: input.identity_type === "none" ? input.no_identity_reason.trim() : "",
     phone: input.phone.trim(),
     email: input.email.trim().toLowerCase(),
     residential_address: input.residential_address.trim(),

@@ -3,14 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
-import { formatDate, formatPhone } from "@/lib/format";
-import {
-  NO_IDENTITY_REASONS,
-  PatientUpdate,
-  defaultAskAgain,
-  fieldErrorsFromZod,
-  type NoIdentityReasonCode,
-} from "@/lib/patients/schema";
+import { PatientUpdate, fieldErrorsFromZod } from "@/lib/patients/schema";
 import { FileMembersPanel, type FileMember } from "./file-members";
 import { WarningIcon } from "./icons";
 
@@ -25,9 +18,7 @@ export type PatientRecord = {
   identity_type: IdentityType;
   identity_number: string | null;
   identity_country: string | null;
-  no_identity_reason_code: NoIdentityReasonCode | null;
-  no_identity_note: string | null;
-  ask_identity_again: boolean | null;
+  no_identity_reason: string | null;
   phone: string | null;
   email: string | null;
   residential_address: string | null;
@@ -48,9 +39,7 @@ type Draft = {
   identity_type: IdentityType;
   identity_number: string;
   identity_country: string;
-  no_identity_reason_code: NoIdentityReasonCode | "";
-  no_identity_note: string;
-  ask_identity_again: boolean;
+  no_identity_reason: string;
   phone: string;
   email: string;
   residential_address: string;
@@ -67,9 +56,7 @@ function toDraft(patient: PatientRecord): Draft {
     identity_type: patient.identity_type,
     identity_number: patient.identity_number ?? "",
     identity_country: patient.identity_country ?? "",
-    no_identity_reason_code: patient.no_identity_reason_code ?? "",
-    no_identity_note: patient.no_identity_note ?? "",
-    ask_identity_again: patient.ask_identity_again ?? false,
+    no_identity_reason: patient.no_identity_reason ?? "",
     phone: patient.phone ?? "",
     email: patient.email ?? "",
     residential_address: patient.residential_address ?? "",
@@ -90,10 +77,9 @@ export function PatientEditForm({
 }: {
   patient: PatientRecord;
   duplicateNotice?: DuplicateNotice | null;
-  /** Everyone active on this file number, including this patient. */
+  /** Other active patients sharing this file number. */
   fileMembers?: FileMember[];
 }) {
-  const otherMembers = Math.max(0, fileMembers.length - 1);
   const router = useRouter();
   const [draft, setDraft] = useState<Draft>(() => toDraft(patient));
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -126,9 +112,7 @@ export function PatientEditForm({
       identity_country: ["passport", "foreign_document"].includes(draft.identity_type)
         ? draft.identity_country.toUpperCase()
         : "",
-      no_identity_reason_code: draft.identity_type === "none" ? draft.no_identity_reason_code : "",
-      no_identity_note: draft.identity_type === "none" ? draft.no_identity_note : "",
-      ask_identity_again: draft.identity_type === "none" ? draft.ask_identity_again : false,
+      no_identity_reason: draft.identity_type === "none" ? draft.no_identity_reason : "",
       phone: draft.phone,
       email: draft.email,
       residential_address: draft.residential_address,
@@ -198,18 +182,17 @@ export function PatientEditForm({
   return (
     <form onSubmit={save} noValidate>
       <main className="formShell">
-        {/* One way back: the top nav. No "Back to patients" button here. */}
         <div className="formTitleRow">
           <div>
             <h1>{patient.first_names} {patient.surname}</h1>
-            <p className="recordMeta tabularFigures">
-              {formatDate(patient.date_of_birth)}
-              {patient.phone ? ` · ${formatPhone(patient.phone)}` : ""}
+            <p className="mono muted">
+              {patient.file_number}
+              {fileMembers.length > 0 && (
+                <span className="muted"> · shared with {fileMembers.length} other {fileMembers.length === 1 ? "person" : "people"}</span>
+              )}
             </p>
           </div>
-          <button className="button buttonPrimary" type="submit" disabled={saving || archiving}>
-            {saving ? "Saving" : "Save changes"}
-          </button>
+          <Link className="button buttonSecondary" href="/patients">Back to patients</Link>
         </div>
 
         {duplicateNotice && (
@@ -224,32 +207,34 @@ export function PatientEditForm({
         {formError && <div className="formErrorBanner" role="alert">{formError}</div>}
         {saved && <div className="formSuccessBanner" role="status">Changes saved.</div>}
 
+        <FileMembersPanel fileNumber={patient.file_number} members={fileMembers} />
+
         <div className="formPrimary">
         <section className="formPanel">
           <h2 className="formPanelHeader">Patient details</h2>
           <div className="formPanelBody formGrid">
             <div className="formField fullWidth">
-              <label htmlFor="file_number">File number</label>
+              <label htmlFor="file_number">File number <span className="required">*</span></label>
               <input id="file_number" value={draft.file_number} onChange={(event) => update("file_number", event.target.value)} autoComplete="off" />
               <p className="fieldHelp">
-                {otherMembers > 0
-                  ? `Changing the file number moves only this patient off file ${patient.file_number}.`
+                {fileMembers.length > 0
+                  ? "Clinic file number, shared with the other people on this file. Changing it here moves only this patient off the file."
                   : "Clinic file number. Changing it to a number already in use is blocked — add someone to an existing file from that file instead."}
               </p>
               <FieldError message={errors.file_number} />
             </div>
             <div className="formField">
-              <label htmlFor="first_names">First names</label>
+              <label htmlFor="first_names">First names <span className="required">*</span></label>
               <input id="first_names" value={draft.first_names} onChange={(event) => update("first_names", event.target.value)} autoComplete="given-name" />
               <FieldError message={errors.first_names} />
             </div>
             <div className="formField">
-              <label htmlFor="surname">Surname</label>
+              <label htmlFor="surname">Surname <span className="required">*</span></label>
               <input id="surname" value={draft.surname} onChange={(event) => update("surname", event.target.value)} autoComplete="family-name" />
               <FieldError message={errors.surname} />
             </div>
             <div className="formField">
-              <label htmlFor="date_of_birth">Date of birth</label>
+              <label htmlFor="date_of_birth">Date of birth <span className="required">*</span></label>
               <input id="date_of_birth" type="date" value={draft.date_of_birth} onChange={(event) => update("date_of_birth", event.target.value)} />
               <FieldError message={errors.date_of_birth} />
             </div>
@@ -260,7 +245,7 @@ export function PatientEditForm({
           <h2 className="formPanelHeader">Identity</h2>
           <div className="formPanelBody formGrid">
             <div className="formField">
-              <label htmlFor="identity_type">Identity document</label>
+              <label htmlFor="identity_type">Identity document <span className="required">*</span></label>
               <select id="identity_type" value={draft.identity_type} onChange={(event) => update("identity_type", event.target.value as IdentityType)}>
                 <option value="sa_id">South African ID</option>
                 <option value="passport">Passport</option>
@@ -270,65 +255,23 @@ export function PatientEditForm({
             </div>
             {draft.identity_type !== "none" && (
               <div className="formField">
-                <label htmlFor="identity_number">Document number</label>
+                <label htmlFor="identity_number">Document number <span className="required">*</span></label>
                 <input id="identity_number" value={draft.identity_number} onChange={(event) => update("identity_number", event.target.value)} autoComplete="off" />
                 <FieldError message={errors.identity_number} />
               </div>
             )}
             {["passport", "foreign_document"].includes(draft.identity_type) && (
               <div className="formField">
-                <label htmlFor="identity_country">Issuing country code</label>
+                <label htmlFor="identity_country">Issuing country code <span className="required">*</span></label>
                 <input id="identity_country" value={draft.identity_country} onChange={(event) => update("identity_country", event.target.value.toUpperCase())} maxLength={2} placeholder="ZW" />
                 <FieldError message={errors.identity_country} />
               </div>
             )}
             {draft.identity_type === "none" && (
-              <div className="formField fullWidth identityGap">
-                <label htmlFor="no_identity_reason_code">Why is there no document?</label>
-                <select
-                  id="no_identity_reason_code"
-                  value={draft.no_identity_reason_code}
-                  onChange={(event) => {
-                    const code = event.target.value as NoIdentityReasonCode | "";
-                    update("no_identity_reason_code", code);
-                    update("ask_identity_again", defaultAskAgain(code));
-                  }}
-                >
-                  <option value="">Select a reason</option>
-                  {NO_IDENTITY_REASONS.map((reason) => (
-                    <option key={reason.value} value={reason.value}>{reason.label}</option>
-                  ))}
-                </select>
-                <FieldError message={errors.no_identity_reason_code} />
-
-                <div className="formField">
-                  <label htmlFor="no_identity_note">
-                    Note{" "}
-                    {draft.no_identity_reason_code === "other" ? null : (
-                      <span className="optionalMark">(optional)</span>
-                    )}
-                  </label>
-                  <textarea
-                    id="no_identity_note"
-                    value={draft.no_identity_note}
-                    onChange={(event) => update("no_identity_note", event.target.value)}
-                    placeholder={
-                      draft.no_identity_reason_code === "other"
-                        ? "Describe the reason"
-                        : "Anything else worth recording"
-                    }
-                  />
-                  <FieldError message={errors.no_identity_note} />
-                </div>
-
-                <label className="checkboxField">
-                  <input
-                    type="checkbox"
-                    checked={draft.ask_identity_again}
-                    onChange={(event) => update("ask_identity_again", event.target.checked)}
-                  />
-                  <span>Ask again at next visit</span>
-                </label>
+              <div className="formField fullWidth">
+                <label htmlFor="no_identity_reason">Reason no document is available <span className="required">*</span></label>
+                <textarea id="no_identity_reason" value={draft.no_identity_reason} onChange={(event) => update("no_identity_reason", event.target.value)} />
+                <FieldError message={errors.no_identity_reason} />
               </div>
             )}
           </div>
@@ -337,24 +280,18 @@ export function PatientEditForm({
         <section className="formPanel">
           <h2 className="formPanelHeader">Contact details</h2>
           <div className="formPanelBody formGrid">
-            {otherMembers > 0 && (
-              <p className="fieldHelp fullWidth">
-                Shared with {otherMembers} other {otherMembers === 1 ? "patient" : "patients"} on
-                file {patient.file_number}.
-              </p>
-            )}
             <div className="formField">
-              <label htmlFor="phone">Mobile number</label>
+              <label htmlFor="phone">Mobile number {draft.no_contact_details ? null : <span className="required">*</span>}</label>
               <input id="phone" type="tel" value={draft.phone} onChange={(event) => update("phone", event.target.value)} autoComplete="tel" />
               <FieldError message={errors.phone} />
             </div>
             <div className="formField">
-              <label htmlFor="email">Email address <span className="optionalMark">(optional)</span></label>
+              <label htmlFor="email">Email address</label>
               <input id="email" type="email" value={draft.email} onChange={(event) => update("email", event.target.value)} autoComplete="email" />
               <FieldError message={errors.email} />
             </div>
             <div className="formField fullWidth">
-              <label htmlFor="residential_address">Residential address</label>
+              <label htmlFor="residential_address">Residential address {draft.no_contact_details ? null : <span className="required">*</span>}</label>
               <textarea id="residential_address" value={draft.residential_address} onChange={(event) => update("residential_address", event.target.value)} autoComplete="street-address" />
               <p className="fieldHelp">Searchable — helps find patients who gave different names at the same address.</p>
               <FieldError message={errors.residential_address} />
@@ -366,7 +303,7 @@ export function PatientEditForm({
             </label>
             {draft.no_contact_details && (
               <div className="formField fullWidth">
-                <label htmlFor="no_contact_reason">Reason there are no contact details</label>
+                <label htmlFor="no_contact_reason">Reason there are no contact details <span className="required">*</span></label>
                 <textarea id="no_contact_reason" value={draft.no_contact_reason} onChange={(event) => update("no_contact_reason", event.target.value)} placeholder="For example, treated on the day with no phone or fixed address" />
                 <FieldError message={errors.no_contact_reason} />
               </div>
@@ -375,14 +312,6 @@ export function PatientEditForm({
         </section>
 
         </div>
-
-        {/* Below the patient's own details: the record you opened outranks the
-            other people who share its file number. */}
-        <FileMembersPanel
-          fileNumber={patient.file_number}
-          members={fileMembers}
-          currentPatientId={patient.id}
-        />
 
         {/* Soft archive only — never hard delete. Same person twice → merge instead. */}
         <section className="dangerZone" aria-labelledby="archive-heading">
@@ -409,7 +338,7 @@ export function PatientEditForm({
               <div className="archiveConfirmPanel">
                 <div className="formField">
                   <label htmlFor="archive_reason">
-                    Why is this file being archived?
+                    Why is this file being archived? <span className="required">*</span>
                   </label>
                   <textarea
                     id="archive_reason"
@@ -449,6 +378,13 @@ export function PatientEditForm({
           </div>
         </section>
       </main>
+
+      <div className="formActions">
+        <Link className="button buttonSecondary" href="/patients">Cancel</Link>
+        <button className="button buttonPrimary" type="submit" disabled={saving || archiving}>
+          {saving ? "Saving" : "Save changes"}
+        </button>
+      </div>
     </form>
   );
 }
