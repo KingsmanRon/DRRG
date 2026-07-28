@@ -2243,3 +2243,34 @@ textarea:focus-visible {
     padding-left: 18px;
   }
 }
+
+/* The stacked layout turns every cell into a label + value grid. The file
+   header is a summary, not a labelled field, so it opts out; and a member's
+   file-number cell is deliberately empty (the header states it), so it is
+   dropped rather than shown as a label with nothing beside it. */
+@media (max-width: 900px) {
+  .fileGroupRow td {
+    display: block;
+    padding: 0;
+  }
+
+  .fileGroupToggle {
+    padding: 12px 14px;
+  }
+
+  .fileMemberRow td:first-child {
+    display: none;
+  }
+
+  .fileMemberRow td:nth-child(2) {
+    padding-left: 0;
+  }
+
+  .fileGroup .fileMemberRow td:first-child {
+    box-shadow: none;
+  }
+
+  .fileMemberRow {
+    box-shadow: inset 3px 0 0 var(--green-soft);
+  }
+}
