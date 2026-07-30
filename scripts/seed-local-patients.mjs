@@ -40,17 +40,17 @@ assert.ifError(signIn.error);
 const patients = [
   { first_names: "Nomsa", surname: "Dlamini", date_of_birth: "1987-04-12", identity_type: "sa_id", identity_number: saId("870412500908"), phone: "082 345 6789", email: "nomsa.dlamini@example.com", residential_address: "14 Acacia Road, Soweto", file_number: "" },
   { first_names: "Sipho", surname: "Mthembu", date_of_birth: "1992-11-03", identity_type: "passport", identity_number: "A9201135", identity_country: "ZW", phone: "076 123 4567", email: "", residential_address: "22 Marabastad, Pretoria", file_number: "" },
-  { first_names: "Bongani", surname: "Mokoena", date_of_birth: "1983-07-08", identity_type: "none", no_identity_reason: "Passport application pending at Home Affairs", phone: "079 321 0987", email: "", residential_address: "8 Vilakazi Street, Orlando", file_number: "CASH-1007" },
+  { first_names: "Bongani", surname: "Mokoena", date_of_birth: "1983-07-08", identity_type: "none", no_identity_reason_code: "home_affairs_pending", phone: "079 321 0987", email: "", residential_address: "8 Vilakazi Street, Orlando", file_number: "CASH-1007" },
   { first_names: "Lerato", surname: "Khumalo", date_of_birth: "1995-09-30", identity_type: "sa_id", identity_number: saId("950930500808"), phone: "083 777 1234", email: "lerato.k@example.com", residential_address: "5 Church Street, Polokwane", file_number: "" },
   { first_names: "Johannes", surname: "Botha", date_of_birth: "1978-01-15", identity_type: "sa_id", identity_number: saId("780115500808"), phone: "084 555 9090", email: "", residential_address: "31 Loop Street, Bloemfontein", file_number: "CASH-2210" },
 
   // Pair 1: same name + date of birth (classic duplicate), different phone/document.
   { first_names: "Thabo", surname: "Nkosi", date_of_birth: "1990-06-21", identity_type: "sa_id", identity_number: saId("900621500808"), phone: "071 987 6543", email: "", residential_address: "3 Long Street, Durban", file_number: "" },
-  { first_names: "Thabo", surname: "Nkosi", date_of_birth: "1990-06-21", identity_type: "none", no_identity_reason: "ID card lost, affidavit provided", phone: "071 000 1111", email: "", residential_address: "3 Long Street, Durban", file_number: "" },
+  { first_names: "Thabo", surname: "Nkosi", date_of_birth: "1990-06-21", identity_type: "none", no_identity_reason_code: "lost_or_stolen", phone: "071 000 1111", email: "", residential_address: "3 Long Street, Durban", file_number: "" },
 
   // Pair 2: returning patient, same mobile number but mistyped/changed details.
   { first_names: "Ayanda", surname: "Zulu", date_of_birth: "1985-02-14", identity_type: "sa_id", identity_number: saId("850214500808"), phone: "082 111 2222", email: "ayanda.zulu@example.com", residential_address: "77 Beach Road, Gqeberha", file_number: "" },
-  { first_names: "Andile", surname: "Zulu", date_of_birth: "1988-08-08", identity_type: "none", no_identity_reason: "Registering on behalf, documents to follow", phone: "082 111 2222", email: "", residential_address: "77 Beach Road, Gqeberha", file_number: "" },
+  { first_names: "Andile", surname: "Zulu", date_of_birth: "1988-08-08", identity_type: "none", no_identity_reason_code: "not_brought", phone: "082 111 2222", email: "", residential_address: "77 Beach Road, Gqeberha", file_number: "" },
 ];
 
 let created = 0;
@@ -79,7 +79,9 @@ for (const p of patients) {
       identity_type: p.identity_type,
       identity_number: p.identity_number ?? "",
       identity_country: p.identity_country ?? "",
-      no_identity_reason: p.no_identity_reason ?? "",
+      no_identity_reason_code: p.no_identity_reason_code ?? "",
+      no_identity_note: p.no_identity_note ?? "",
+      ask_identity_again: p.ask_identity_again ?? false,
       phone: p.phone,
       email: p.email ?? "",
       residential_address: p.residential_address,

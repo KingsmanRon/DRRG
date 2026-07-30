@@ -58,7 +58,7 @@ export default async function PatientDetailPage({
   const { data, error } = await supabase
     .from("patients")
     .select(
-      "id, file_number, first_names, surname, date_of_birth, identity_type, identity_number, identity_country, no_identity_reason, phone, email, residential_address, no_contact_reason, status, merged_into, archived_at",
+      "id, file_number, first_names, surname, date_of_birth, identity_type, identity_number, identity_country, no_identity_reason_code, no_identity_note, ask_identity_again, phone, email, residential_address, no_contact_reason, status, merged_into, archived_at",
     )
     .eq("id", id)
     .maybeSingle();

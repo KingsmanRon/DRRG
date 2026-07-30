@@ -7,7 +7,10 @@ import {
   ConsentStep,
   ContactDetailsStep,
   IdentityStep,
+  NO_IDENTITY_REASONS,
+  type NoIdentityReasonCode,
   PersonalDetailsStep,
+  defaultAskAgain,
   fieldErrorsFromZod,
 } from "@/lib/patients/schema";
 import { WarningIcon } from "./icons";
@@ -47,7 +50,9 @@ type Draft = {
   identity_type: IdentityType;
   identity_number: string;
   identity_country: string;
-  no_identity_reason: string;
+  no_identity_reason_code: NoIdentityReasonCode | "";
+  no_identity_note: string;
+  ask_identity_again: boolean;
   phone: string;
   email: string;
   residential_address: string;
@@ -68,7 +73,9 @@ function initialDraft(fileContext: FileContext | null): Draft {
     identity_type: "sa_id",
     identity_number: "",
     identity_country: "ZA",
-    no_identity_reason: "",
+    no_identity_reason_code: "",
+    no_identity_note: "",
+    ask_identity_again: false,
     // Shared household contact details carry over; each person can still be
     // given their own before saving.
     phone: fileContext?.phone ?? "",
@@ -128,7 +135,9 @@ export function PatientOnboardingForm({
       identity_country: ["passport", "foreign_document"].includes(draft.identity_type)
         ? draft.identity_country.toUpperCase()
         : "",
-      no_identity_reason: draft.identity_type === "none" ? draft.no_identity_reason : "",
+      no_identity_reason_code: draft.identity_type === "none" ? draft.no_identity_reason_code : "",
+      no_identity_note: draft.identity_type === "none" ? draft.no_identity_note : "",
+      ask_identity_again: draft.identity_type === "none" ? draft.ask_identity_again : false,
       date_of_birth: draft.date_of_birth || "1900-01-01",
     };
   }
@@ -255,7 +264,9 @@ export function PatientOnboardingForm({
         join_file: joiningFile,
         identity_country: identity.identity_country,
         identity_number: identity.identity_number,
-        no_identity_reason: identity.no_identity_reason,
+        no_identity_reason_code: identity.no_identity_reason_code,
+        no_identity_note: identity.no_identity_note,
+        ask_identity_again: identity.ask_identity_again,
         consent_version: CONSENT_VERSION,
         consent_text_hash: CONSENT_TEXT_HASH,
         signature_type: "typed_name",
@@ -424,11 +435,47 @@ export function PatientOnboardingForm({
                 )}
 
                 {draft.identity_type === "none" && (
-                  <div className="formField fullWidth">
-                    <label htmlFor="no_identity_reason">Reason no document is available <span className="required">*</span></label>
-                    <textarea id="no_identity_reason" value={draft.no_identity_reason} onChange={(event) => update("no_identity_reason", event.target.value)} placeholder="For example, passport application pending" />
-                    <FieldError message={errors.no_identity_reason} />
-                  </div>
+                  <>
+                    <div className="formField fullWidth">
+                      <label htmlFor="no_identity_reason_code">Why is there no document? <span className="required">*</span></label>
+                      <select
+                        id="no_identity_reason_code"
+                        value={draft.no_identity_reason_code}
+                        onChange={(event) => {
+                          const code = event.target.value as NoIdentityReasonCode | "";
+                          update("no_identity_reason_code", code);
+                          update("ask_identity_again", defaultAskAgain(code));
+                        }}
+                      >
+                        <option value="">Select a reason</option>
+                        {NO_IDENTITY_REASONS.map((reason) => (
+                          <option key={reason.value} value={reason.value}>{reason.label}</option>
+                        ))}
+                      </select>
+                      <p className="fieldHelp">Pick the closest reason. A note is only required for &ldquo;Other&rdquo;.</p>
+                      <FieldError message={errors.no_identity_reason_code} />
+                    </div>
+                    <div className="formField fullWidth">
+                      <label htmlFor="no_identity_note">
+                        Note {draft.no_identity_reason_code === "other" && <span className="required">*</span>}
+                      </label>
+                      <textarea
+                        id="no_identity_note"
+                        value={draft.no_identity_note}
+                        onChange={(event) => update("no_identity_note", event.target.value)}
+                        placeholder={draft.no_identity_reason_code === "other" ? "Describe the reason" : "Anything else worth recording"}
+                      />
+                      <FieldError message={errors.no_identity_note} />
+                    </div>
+                    <label className="checkboxField fullWidth">
+                      <input
+                        type="checkbox"
+                        checked={draft.ask_identity_again}
+                        onChange={(event) => update("ask_identity_again", event.target.checked)}
+                      />
+                      <span>Ask for the document again at the next visit.</span>
+                    </label>
+                  </>
                 )}
               </div>
             </section>

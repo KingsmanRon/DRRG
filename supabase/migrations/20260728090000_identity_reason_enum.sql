@@ -1,105 +1,170 @@
--- Revert the coded identity reason (20260728090000).
+-- Identity reason: free text becomes a coded reason.
 --
--- Why this file exists: 20260728090000_identity_reason_enum.sql was deleted from
--- the repo by commit d1526bb, but it had already been applied to the database.
--- Deleting a migration file removes it from the repo, not from Postgres, so the
--- database kept the coded reason while the application code went back to the
--- free-text one. The result was that saving any patient recorded as "No identity
--- document" failed: the shape constraint required no_identity_reason_code, and
--- onboard_patient raised 22023 when the payload did not carry one. The API maps
--- that to a generic 500, so it surfaced as patients silently not saving.
+-- Why: `no_identity_reason` was a mandatory free-text field, and production
+-- data already contains "Nog applicable" — someone hit a required field and
+-- typed whatever cleared the validator. A column that exists so the practice
+-- can report on undocumented patients cannot do that job while it holds prose.
 --
--- A deleted migration can only be undone by a forward migration. This restores
--- the 20260727120000 shape exactly: the original identity shape constraint, and
--- onboard_patient / update_patient with their 20260727120000 bodies.
+-- The fix is not to make the free text stricter. It is to make the *reason* a
+-- closed list and the free text optional, because an always-required free-text
+-- box is what produced the junk in the first place.
 --
--- Every step is idempotent, because this file has two jobs. On the database that
--- received 20260728090000 it is a reversal. On a database built from this repo,
--- which never had that migration, it must be a no-op rather than an error — the
--- migrations folder still has to provision a working database from scratch. The
--- steps that touch the added columns are guarded on those columns existing.
---
--- Data: no reason text is lost. 20260728090000 kept the legacy
--- no_identity_reason column and kept writing it (mirroring the label for coded
--- reasons and the note for 'other'), so the prose survives the column drops.
--- Step 2 closes the one gap that would otherwise abort this migration. The
--- ask_identity_again follow-up flag is dropped and not reconstructed: the
--- pre-20260728090000 schema has nowhere to hold it, and it was derived from the
--- reason code rather than entered by staff.
+-- Nothing is dropped here. The original column stays until the practice has
+-- reviewed the backfill (see step 4).
 
 -- --------------------------------------------------------------------------
--- 1. Drop the shape constraint, whichever version is installed.
+-- 1. The coded reason, an optional note, and the follow-up flag.
 -- --------------------------------------------------------------------------
 
-alter table public.patients drop constraint if exists patients_identity_shape_check;
+create type public.no_identity_reason_code as enum (
+  'not_brought',
+  'newborn_no_certificate',
+  'lost_or_stolen',
+  'home_affairs_pending',
+  'asylum_permit_pending',
+  'declined',
+  'other'
+);
+
+alter table public.patients
+  add column no_identity_reason_code public.no_identity_reason_code,
+  add column no_identity_note text check (char_length(no_identity_note) <= 250),
+  add column ask_identity_again boolean not null default false;
 
 -- --------------------------------------------------------------------------
--- 2. Make sure every 'none' row can satisfy the restored constraint.
---
---    20260728090000 step 2 wrote a placeholder into no_identity_note for legacy
---    rows whose free-text reason was blank, and left the blank legacy column
---    alone. Those rows would fail the restored constraint's >= 3 character rule
---    and abort this migration, so populate the legacy column from the coded
---    reason first. This must run before the label function and the columns go.
+-- 2. Backfill. Map what can be mapped confidently; preserve the rest verbatim.
 -- --------------------------------------------------------------------------
 
-do $revert$
-begin
-  if exists (
-    select 1 from information_schema.columns
-    where table_schema = 'public' and table_name = 'patients'
-      and column_name = 'no_identity_reason_code'
-  ) then
-    execute $sql$
-      update public.patients set no_identity_reason = coalesce(
-          nullif(btrim(coalesce(no_identity_note, '')), ''),
-          public.no_identity_reason_label(no_identity_reason_code)
-        )
-      where identity_type = 'none'
-        and char_length(btrim(coalesce(no_identity_reason, ''))) < 3
-    $sql$;
-  end if;
-end
-$revert$;
+-- Patterns are deliberately narrow. Mapping too eagerly invents a clinical
+-- fact from a typo: an earlier draft matched bare 'applic', which turned the
+-- junk value "Nog applicable" into "Home Affairs application in progress".
+-- Under-mapping is safe — everything unmapped lands in 'other' with its
+-- original words intact — so each pattern must name the reason unambiguously.
+update public.patients set
+  no_identity_reason_code = case
+    when reason ~ 'newborn|new born|birth certificate'                 then 'newborn_no_certificate'
+    when reason ~ '\ylost\y|stolen'                                    then 'lost_or_stolen'
+    when reason ~ 'home affairs|\ydha\y|applied for|(id|passport|document) application'
+                                                                       then 'home_affairs_pending'
+    when reason ~ 'asylum|refugee'                                     then 'asylum_permit_pending'
+    when reason ~ 'declin|refus'                                       then 'declined'
+    when reason ~ 'not brought|did not bring|didnt bring|forgot|left at home|left it at home'
+                                                                       then 'not_brought'
+    else 'other'
+  end::public.no_identity_reason_code,
+  -- Anything without a confident mapping keeps its original words verbatim.
+  -- This is what stops "Nog applicable" being silently discarded.
+  no_identity_note = case
+    when reason ~ 'newborn|new born|birth certificate|\ylost\y|stolen|home affairs|\ydha\y|applied for|(id|passport|document) application|asylum|refugee|declin|refus|not brought|did not bring|didnt bring|forgot|left at home|left it at home'
+      then null
+    else nullif(btrim(no_identity_reason), '')
+  end
+from (
+  select id as pid, lower(btrim(coalesce(no_identity_reason, ''))) as reason
+  from public.patients
+  where identity_type = 'none'
+) mapped
+where public.patients.id = mapped.pid
+  and public.patients.identity_type = 'none';
 
--- The restored constraint requires no_identity_reason to be null whenever a
--- document *is* on file. 20260728090000's constraint did not police the legacy
--- column for those rows, so clear any value that survived an identity change.
-update public.patients set no_identity_reason = null
-where identity_type <> 'none'
-  and no_identity_reason is not null;
+-- A legacy row whose reason was blank has nothing to preserve, but 'other'
+-- requires a note, so record why the note is empty rather than failing the
+-- constraint on data that predates it.
+update public.patients set no_identity_note = 'No reason was recorded before this was a required field.'
+where identity_type = 'none'
+  and no_identity_reason_code = 'other'
+  and coalesce(btrim(no_identity_note), '') = '';
+
+-- Reasons that carry a follow-up: these resolve themselves at a later visit.
+-- "Declined" does not — asking again would be badgering the patient.
+update public.patients set ask_identity_again = true
+where identity_type = 'none'
+  and no_identity_reason_code in (
+    'not_brought', 'newborn_no_certificate', 'home_affairs_pending', 'asylum_permit_pending'
+  );
 
 -- --------------------------------------------------------------------------
--- 3. Restore the original identity shape constraint (20260703181502).
+-- 3. Shape: the code is what is now required, not the prose.
 -- --------------------------------------------------------------------------
+
+alter table public.patients drop constraint patients_identity_shape_check;
 
 alter table public.patients add constraint patients_identity_shape_check check (
   (
     identity_type = 'none'
     and identity_number is null
     and identity_country is null
-    and char_length(btrim(coalesce(no_identity_reason, ''))) >= 3
+    and no_identity_reason_code is not null
+    -- A note is required only for 'other'; for every coded reason it is free
+    -- to be empty, which is the whole point of the change.
+    and (no_identity_reason_code <> 'other' or char_length(btrim(coalesce(no_identity_note, ''))) >= 3)
   )
   or
   (
     identity_type = 'sa_id'
     and identity_number ~ '^[0-9]{13}$'
     and identity_country is null
-    and no_identity_reason is null
+    and no_identity_reason_code is null
+    and no_identity_note is null
+    and not ask_identity_again
   )
   or
   (
     identity_type in ('passport', 'foreign_document')
     and char_length(btrim(coalesce(identity_number, ''))) >= 3
     and identity_country ~ '^[A-Z]{2}$'
-    and no_identity_reason is null
+    and no_identity_reason_code is null
+    and no_identity_note is null
+    and not ask_identity_again
   )
 );
 
 -- --------------------------------------------------------------------------
--- 4. Restore onboard_patient and update_patient to their 20260727120000 bodies.
---    Both signatures are unchanged, so these replace in place. On a database
---    that never drifted these are byte-identical to what is already installed.
+-- 4. The legacy column stays, and keeps being written.
+--
+--    Not dropped in this deploy: the backfill above has to be reviewed by the
+--    practice against real records first. Until then both columns are
+--    maintained so anything still reading the old one keeps working.
+-- --------------------------------------------------------------------------
+
+comment on column public.patients.no_identity_reason is
+  'Legacy free-text reason. Superseded by no_identity_reason_code + no_identity_note. '
+  'Retained until the practice has reviewed the backfill; do not read in new code.';
+
+create index patients_no_identity_reason_code_idx
+  on public.patients (no_identity_reason_code)
+  where identity_type = 'none';
+
+create index patients_ask_identity_again_idx
+  on public.patients (ask_identity_again)
+  where ask_identity_again;
+
+-- --------------------------------------------------------------------------
+-- 5. Human-readable labels, so SQL reporting does not re-invent the wording.
+-- --------------------------------------------------------------------------
+
+create function public.no_identity_reason_label(p_code public.no_identity_reason_code)
+returns text
+language sql
+immutable
+set search_path = ''
+as $$
+  select case p_code
+    when 'not_brought' then 'Not brought to this visit'
+    when 'newborn_no_certificate' then 'Newborn — birth certificate not yet issued'
+    when 'lost_or_stolen' then 'Document lost or stolen'
+    when 'home_affairs_pending' then 'Home Affairs application in progress'
+    when 'asylum_permit_pending' then 'Asylum or refugee permit pending'
+    when 'declined' then 'Patient declined to provide'
+    when 'other' then 'Other'
+  end;
+$$;
+
+revoke all on function public.no_identity_reason_label(public.no_identity_reason_code) from public, anon;
+grant execute on function public.no_identity_reason_label(public.no_identity_reason_code) to authenticated, service_role;
+
+-- --------------------------------------------------------------------------
+-- 6. Onboarding and editing write the coded reason.
 -- --------------------------------------------------------------------------
 
 create or replace function public.onboard_patient(
@@ -127,6 +192,9 @@ declare
   v_identity_type public.patient_identity_type;
   v_identity_number text;
   v_identity_country text;
+  v_reason_code public.no_identity_reason_code;
+  v_note text;
+  v_ask_again boolean;
 begin
   p_duplicate_candidate_ids := coalesce(p_duplicate_candidate_ids, '{}'::uuid[]);
   p_duplicate_review_reason := coalesce(p_duplicate_review_reason, '');
@@ -146,13 +214,10 @@ begin
     select 1 from public.patients p where p.file_number = v_supplied_file_number
   );
 
-  -- Joining a household is deliberate: the caller must name an existing file.
   if v_join_file and not v_file_exists then
     raise exception 'file not found' using errcode = 'P0002';
   end if;
 
-  -- Otherwise a number that is already in use is still a collision, so a typo
-  -- cannot quietly put this patient into someone else's household.
   if v_file_exists and not v_join_file then
     raise exception 'patients_file_number_key: file number already exists'
       using errcode = '23505', constraint = 'patients_file_number_key';
@@ -168,8 +233,20 @@ begin
   );
   v_identity_country := nullif(upper(btrim(p_patient->>'identity_country')), '');
 
-  -- Identity stays unique per person, household or not: sharing a file number
-  -- never means sharing an ID.
+  if v_identity_type = 'none' then
+    v_reason_code := nullif(btrim(p_patient->>'no_identity_reason_code'), '')::public.no_identity_reason_code;
+    if v_reason_code is null then
+      raise exception 'an identity reason is required when no document is recorded'
+        using errcode = '22023';
+    end if;
+    v_note := nullif(btrim(p_patient->>'no_identity_note'), '');
+    v_ask_again := coalesce((p_patient->>'ask_identity_again')::boolean, false);
+  else
+    v_reason_code := null;
+    v_note := null;
+    v_ask_again := false;
+  end if;
+
   if v_identity_type <> 'none' and exists (
     select 1
     from public.patients p
@@ -226,6 +303,9 @@ begin
     identity_number,
     identity_country,
     no_identity_reason,
+    no_identity_reason_code,
+    no_identity_note,
+    ask_identity_again,
     phone,
     email,
     residential_address,
@@ -240,7 +320,15 @@ begin
     v_identity_type,
     v_identity_number,
     v_identity_country,
-    nullif(btrim(p_patient->>'no_identity_reason'), ''),
+    -- Legacy column mirrors the coded reason while both are maintained.
+    case
+      when v_identity_type <> 'none' then null
+      when v_reason_code = 'other' then v_note
+      else public.no_identity_reason_label(v_reason_code)
+    end,
+    v_reason_code,
+    v_note,
+    v_ask_again,
     nullif(btrim(p_patient->>'phone'), ''),
     nullif(lower(btrim(p_patient->>'email')), ''),
     nullif(btrim(p_patient->>'residential_address'), ''),
@@ -340,6 +428,9 @@ declare
   v_identity_type public.patient_identity_type;
   v_identity_number text;
   v_identity_country text;
+  v_reason_code public.no_identity_reason_code;
+  v_note text;
+  v_ask_again boolean;
 begin
   if v_actor is null or not (select private.is_active_staff()) then
     raise exception 'patient editing requires active staff access'
@@ -361,9 +452,6 @@ begin
     raise exception 'file number is required' using errcode = '22023';
   end if;
 
-  -- Household members share a number, so "already in use" only bites when the
-  -- number is being *changed* onto one other patients hold. Keeping your own
-  -- file number is always allowed; moving between files is not done here.
   if v_file_number is distinct from v_current_file_number and exists (
     select 1 from public.patients p
     where p.file_number = v_file_number and p.id <> p_id
@@ -381,6 +469,20 @@ begin
     ''
   );
   v_identity_country := nullif(upper(btrim(p_patient->>'identity_country')), '');
+
+  if v_identity_type = 'none' then
+    v_reason_code := nullif(btrim(p_patient->>'no_identity_reason_code'), '')::public.no_identity_reason_code;
+    if v_reason_code is null then
+      raise exception 'an identity reason is required when no document is recorded'
+        using errcode = '22023';
+    end if;
+    v_note := nullif(btrim(p_patient->>'no_identity_note'), '');
+    v_ask_again := coalesce((p_patient->>'ask_identity_again')::boolean, false);
+  else
+    v_reason_code := null;
+    v_note := null;
+    v_ask_again := false;
+  end if;
 
   if v_identity_type <> 'none' and exists (
     select 1
@@ -405,7 +507,14 @@ begin
     identity_type = v_identity_type,
     identity_number = v_identity_number,
     identity_country = v_identity_country,
-    no_identity_reason = nullif(btrim(p_patient->>'no_identity_reason'), ''),
+    no_identity_reason = case
+      when v_identity_type <> 'none' then null
+      when v_reason_code = 'other' then v_note
+      else public.no_identity_reason_label(v_reason_code)
+    end,
+    no_identity_reason_code = v_reason_code,
+    no_identity_note = v_note,
+    ask_identity_again = v_ask_again,
     phone = nullif(btrim(p_patient->>'phone'), ''),
     email = nullif(lower(btrim(p_patient->>'email')), ''),
     residential_address = nullif(btrim(p_patient->>'residential_address'), ''),
@@ -423,7 +532,6 @@ begin
     jsonb_build_object('file_number', v_file_number)
   );
 
-  -- Re-open dismissed pairs whose matched fields changed with this edit.
   insert into public.duplicate_reviews (patient_id, candidate_patient_id, review_reason, reviewed_by)
   select distinct on (least(dr.patient_id::text, dr.candidate_patient_id::text),
                       greatest(dr.patient_id::text, dr.candidate_patient_id::text))
@@ -437,8 +545,6 @@ begin
   where dr.status = 'not_duplicate'
     and (dr.patient_id = p_id or dr.candidate_patient_id = p_id)
     and other.status = 'active'
-    -- Never re-open a pair that now shares a file: same household is a
-    -- standing statement that these are different people.
     and other.file_number <> v_file_number
     and dr.resolved_fingerprint is not null
     and dr.resolved_fingerprint <> private.pair_match_fingerprint(dr.patient_id, dr.candidate_patient_id)
@@ -458,35 +564,4 @@ revoke all on function public.update_patient(uuid, jsonb) from public, anon;
 grant execute on function public.update_patient(uuid, jsonb) to authenticated;
 grant execute on function public.update_patient(uuid, jsonb) to service_role;
 
--- --------------------------------------------------------------------------
--- 5. Remove everything else 20260728090000 added.
---
---    Guarded as one unit: the label function's signature names the enum type, so
---    even "drop function if exists" errors on a database where that type was
---    never created. Order matters — the columns go before the type they use.
--- --------------------------------------------------------------------------
-
-do $revert$
-begin
-  if exists (
-    select 1 from information_schema.columns
-    where table_schema = 'public' and table_name = 'patients'
-      and column_name = 'no_identity_reason_code'
-  ) then
-    execute 'drop index if exists public.patients_no_identity_reason_code_idx';
-    execute 'drop index if exists public.patients_ask_identity_again_idx';
-    execute 'drop function if exists public.no_identity_reason_label(public.no_identity_reason_code)';
-    execute 'alter table public.patients
-               drop column if exists no_identity_reason_code,
-               drop column if exists no_identity_note,
-               drop column if exists ask_identity_again';
-    execute 'drop type if exists public.no_identity_reason_code';
-  end if;
-end
-$revert$;
-
--- The column is the live reason field again, not a superseded one.
-comment on column public.patients.no_identity_reason is null;
-
--- Let PostgREST pick up the replaced functions and the dropped columns.
 notify pgrst, 'reload schema';
