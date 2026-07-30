@@ -100,3 +100,12 @@ Useful checks: `npm run verify:db` (onboarding/duplicate RPCs), `npm run verify:
 point the same environment variables at the cloud project and apply the migrations there.
 
 There is no demo/fake-data mode — all screens use the real database.
+
+## Backups
+
+The Supabase Free plan has no automated backups and no point-in-time recovery,
+and this app has no delete path — the database is the single point of failure for
+records it is built never to lose. `npm run backup` writes a local `pg_dump` of
+the schema, the data and the staff logins. Read [BACKUP.md](BACKUP.md) before
+scheduling it: every dump is patient health information in plain text, so where
+it is stored matters as much as that it exists.

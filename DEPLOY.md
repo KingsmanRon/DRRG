@@ -104,6 +104,17 @@ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
   secret key; only the local `seed:*`/`verify:db` scripts do, and those are not run in
   production.
 
+## 5a. Backups
+
+Check **Settings → Database → Backups**. On the Free plan there are none, and
+there is no point-in-time recovery — so a mistaken `delete` in the SQL editor, or
+a lost project, takes the register with it. This app has no delete path precisely
+because records must survive, which makes unbacked storage the weak link.
+
+Supabase Pro (daily backups, plus PITR as an add-on) is the real fix. Until then
+`npm run backup` is a free local stopgap — see [BACKUP.md](BACKUP.md), including
+the storage rules, since every dump is patient data in plain text.
+
 ## 6. Smoke test after deploy
 
 - Sign in with a staff account → lands on `/patients`.

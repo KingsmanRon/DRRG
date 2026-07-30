@@ -10,3 +10,6 @@ supabase/.branches
 supabase/.temp
 .playwright-cli
 output
+
+# Database dumps: patient data, never commit these.
+backups
