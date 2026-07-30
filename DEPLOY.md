@@ -18,18 +18,58 @@ before the app will work.
 
 ## 2. Apply the migrations to the cloud database
 
-All migrations in `supabase/migrations/` must be applied, in order (as of
-2026-07-12 there are five; later ones add merge/scoring, then duplicate
-prefilter indexes and staff directory policy for audit). **Apply migrations
-before deploying new app code** — the old app works against the new schema,
-but not the other way round:
+Every migration in `supabase/migrations/` must be applied, in filename order.
+**Apply migrations before deploying new app code** — the old app works against the
+new schema, but not the other way round:
 
 ```bash
 supabase link --project-ref <your-project-ref>
 supabase db push
 ```
 
-(Or paste each migration's SQL into the Supabase SQL editor, oldest first.)
+Prefer `db push` over pasting SQL into the editor. `db push` records what it
+applied in the migration history table; the SQL editor does not, and a database
+with no history is one nobody can check for drift (see 2a).
+
+## 2a. Migration history: required once per hand-applied database
+
+The CLI tracks applied migrations in `supabase_migrations.schema_migrations`. A
+database whose migrations were pasted into the SQL editor has no such table, so
+nothing records what is applied and the repo and the database can disagree in
+silence. That is not hypothetical: a migration was once deleted from this repo
+while still live in the database, and patient saving broke with a generic error
+because no query could show that the two had diverged.
+
+Fix it once, per database:
+
+```bash
+npm run migrations:ledger      # prints the command below with every version filled in
+```
+
+```bash
+supabase link --project-ref <your-project-ref>
+supabase migration repair --linked --status applied <every version the script printed>
+```
+
+`migration repair` runs none of the migrations' SQL — it only records versions as
+already applied, so it is safe on a database that already has this schema.
+
+Then check that the repo and the database agree:
+
+```bash
+supabase migration list --linked
+```
+
+Every row must show the same version under **Local** and **Remote**. A version
+present on one side only is drift, and is worth resolving before deploying.
+
+If you cannot use the CLI, this query answers the same question directly:
+
+```sql
+select version, name from supabase_migrations.schema_migrations order by version;
+```
+
+An error saying the relation does not exist means step 2a has not been done yet.
 
 ## 3. Create staff logins
 
@@ -83,7 +123,9 @@ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
 - A merged (not manually archived) record must **not** offer Restore.
 - As doctor on Patients: **Include archived** / **Archived only** chips find archived
   files; staff must not see those chips.
-- Apply migration `20260712140000_search_archived_scope.sql` for list scopes.
+- Register a patient with **No identity document** → the reason is a dropdown, saving
+  works without a note, and a note is demanded only for **Other**. Edit that patient
+  back to an SA ID → the reason clears.
 
 (There is intentionally no way to delete a patient — records are retained
 per HPCSA guidance; merging archives the losing record.)

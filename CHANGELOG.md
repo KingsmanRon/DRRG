@@ -1,5 +1,30 @@
 # Changelog
 
+## 2026-07-30 — Coded identity reason, and drift made visible
+
+Patients recorded as **No identity document** could not be saved. The database
+required a coded reason while the app still sent free text, because the
+migration that introduced the code was deleted from the repo after it had
+already been applied — deleting the file removed it from git, not from Postgres.
+
+- **Reason for no identity document is now a dropdown**, not a free-text box:
+  not brought, newborn, lost or stolen, Home Affairs pending, asylum permit
+  pending, declined, other. A note is optional except for **Other**, which is
+  the point — the old always-required text box is what produced values like
+  "Nog applicable". Reasons that resolve themselves later default **Ask again
+  at the next visit** on, and staff can override it.
+- **The existing register UI is unchanged.** Only the two Identity sections
+  changed; the patient table, search, sorting and pagination are untouched.
+- **Failed saves now say why.** A rejected identity shape returns a specific
+  message instead of a generic 500, guard rejections from the database return
+  422 rather than 500, and a missing function or column is reported as "the
+  database is out of date" instead of an unexplained failure. Every failed
+  mutation is logged with its Postgres code — previously nothing was.
+- **Migration history is now tracked.** `npm run migrations:ledger` prints the
+  one-time command that teaches Supabase which migrations a hand-applied
+  database already has, so repo-versus-database drift is a query away instead
+  of a debugging session. See DEPLOY.md step 2a.
+
 ## 2026-07-29 — Register groups patients sharing a file number
 
 A household file repeated its number, its "N people" badge and its phone on

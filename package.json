@@ -8,6 +8,7 @@
     "start": "next start",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "migrations:ledger": "node scripts/migration-ledger.mjs",
     "verify:db": "node scripts/verify-local-db.mjs",
     "verify:merge": "node scripts/verify-local-merge.mjs",
     "seed:local:staff": "node scripts/seed-local-staff.mjs",
