@@ -1,3 +1,4 @@
+import { addressWithoutPostalCode } from "./address";
 import { normalisePhone } from "./phone";
 
 /**
@@ -18,6 +19,7 @@ import { normalisePhone } from "./phone";
  *   email match              +2
  *   phone match              +1
  *   address match            +1
+ *   postal code               0  — a delivery area, not a person
  *
  * Tiers: likely  = identity match, or name + date of birth, or score >= 6
  *        possible = score 2..5 across AT LEAST TWO matching fields.
@@ -52,6 +54,18 @@ export function normaliseAddress(value: string): string {
   return stripDiacritics(value).toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 }
 
+/**
+ * What addresses are compared on: the address content, with any trailing postal
+ * code and every separator taken out. "1410 Zone 13 Sebokeng 1983",
+ * "1410\nZone13\nSebokeng" and "1410 Zone 13 Sebokeng" are one place.
+ *
+ * The postal code column is never folded back in — it covers a whole delivery
+ * area, so it identifies nobody.
+ */
+export function addressMatchKey(value: string): string {
+  return normaliseAddress(String(addressWithoutPostalCode(value) ?? "")).replace(/ /g, "");
+}
+
 /** Algorithm contract (tests only). Production scoring runs in SQL. */
 export function scorePair(a: MatchSide, b: MatchSide, identityMatch = false): MatchResult {
   const sameName =
@@ -63,7 +77,7 @@ export function scorePair(a: MatchSide, b: MatchSide, identityMatch = false): Ma
   );
   const samePhone =
     normalisePhone(a.phone).length > 0 && normalisePhone(a.phone) === normalisePhone(b.phone);
-  const sameAddress = normaliseAddress(a.residential_address) === normaliseAddress(b.residential_address);
+  const sameAddress = addressMatchKey(a.residential_address) === addressMatchKey(b.residential_address);
 
   const score =
     (sameName ? 3 : 0) + (sameDob ? 3 : 0) + (sameEmail ? 2 : 0) + (samePhone ? 1 : 0) + (sameAddress ? 1 : 0);
@@ -119,6 +133,9 @@ function sideFingerprint(side: FingerprintSide): string {
     side.date_of_birth,
     normalisePhone(side.phone),
     (side.email ?? "").trim().toLowerCase(),
+    // The stored address, not the match key: the fingerprint's job is to notice
+    // that a field was edited, so it is deliberately the more sensitive of the
+    // two. (The postal code column is not in here — it is not a matched field.)
     normaliseAddress(side.residential_address),
     side.identity_type,
     (side.identity_number ?? "").trim().toUpperCase(),

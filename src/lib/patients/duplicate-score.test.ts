@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  addressMatchKey,
   matchBanner,
   pairMatchFingerprint,
   scorePair,
@@ -108,6 +109,94 @@ describe("scorePair", () => {
   it("missing emails never count as a match", () => {
     const result = scorePair(side({ email: null }), { ...unrelated, email: null });
     expect(result.reasons).not.toContain("email");
+  });
+});
+
+describe("addressMatchKey", () => {
+  it("ignores line breaks and spacing", () => {
+    expect(addressMatchKey("1410\nZone13\nSebokeng")).toBe(addressMatchKey("1410 Zone 13 Sebokeng"));
+  });
+
+  it("ignores case, punctuation and accents", () => {
+    expect(addressMatchKey("1410, ZONE 13; Sébokeng.")).toBe(addressMatchKey("1410 zone 13 sebokeng"));
+  });
+
+  it("ignores a postal code on one side only", () => {
+    expect(addressMatchKey("1410 Zone 13 Sebokeng\n1983")).toBe(addressMatchKey("1410 Zone 13 Sebokeng"));
+  });
+
+  it("still tells two addresses apart", () => {
+    expect(addressMatchKey("1410 Zone 13 Sebokeng")).not.toBe(addressMatchKey("1411 Zone 13 Sebokeng"));
+    expect(addressMatchKey("1410 Zone 13 Sebokeng\n1983")).not.toBe(
+      addressMatchKey("1410 Zone 14 Sebokeng\n1983"),
+    );
+  });
+});
+
+describe("the Boitumelo Phale pair", () => {
+  // Two files for what looks like one person: same name, same address, dates of
+  // birth a day apart, different phones, no email. The address on the older
+  // file carried the postal code; the newer one did not, which is the only
+  // reason this pair was never flagged.
+  const older: MatchSide = {
+    first_names: "Boitumelo",
+    surname: "Phale",
+    date_of_birth: "1995-09-09",
+    phone: "073 111 2222",
+    email: null,
+    residential_address: "1410\nZone 13\nSebokeng\n1983",
+  };
+  const newer: MatchSide = {
+    first_names: "Boitumelo",
+    surname: "Phale",
+    date_of_birth: "1995-09-10",
+    phone: "079 444 5555",
+    email: null,
+    residential_address: "1410\nZone 13\nSebokeng",
+  };
+
+  it("is a possible duplicate on name and address alone", () => {
+    const result = scorePair(older, newer);
+    expect(result.score).toBe(4);
+    expect(result.tier).toBe("possible");
+    expect(result.reasons).toEqual(["name", "address"]);
+  });
+
+  it("is put in front of a person rather than merged", () => {
+    // "Possible" is the tier that asks for a decision; it never blocks or
+    // merges on its own, and the one-day difference stays visible.
+    expect(matchBanner(scorePair(older, newer))).toBe("Possible duplicate — same name and address");
+    expect(older.date_of_birth).not.toBe(newer.date_of_birth);
+  });
+
+  it("does not depend on the postal code being on file", () => {
+    const bothWithout = scorePair(
+      { ...older, residential_address: "1410 Zone 13 Sebokeng" },
+      newer,
+    );
+    expect(bothWithout.score).toBe(scorePair(older, newer).score);
+  });
+
+  it("still matches once the code is moved out of the address", () => {
+    const split = scorePair(
+      { ...older, residential_address: "1410\nZone 13\nSebokeng" },
+      newer,
+    );
+    expect(split.tier).toBe("possible");
+    expect(split.reasons).toEqual(["name", "address"]);
+  });
+
+  it("counts moving the code out as a change to the stored address", () => {
+    // The fingerprint follows the stored text, so it does notice the rewrite.
+    // That is why the migration re-baselines the pairs it rewrote — otherwise
+    // every dismissed pair would re-open the next time either file was edited.
+    expect(pairMatchFingerprint(
+      { ...older, identity_type: "none" },
+      { ...newer, identity_type: "none" },
+    )).not.toBe(pairMatchFingerprint(
+      { ...older, residential_address: "1410\nZone 13\nSebokeng", identity_type: "none" },
+      { ...newer, identity_type: "none" },
+    ));
   });
 });
 

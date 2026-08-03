@@ -4,9 +4,11 @@ import {
   ContactDetailsStep,
   PersonalDetailsStep,
   PatientInput,
+  PatientUpdate,
   defaultAskAgain,
   fieldErrorsFromZod,
   normalizePatientInput,
+  normalizePatientUpdate,
 } from "./schema";
 
 const base = {
@@ -114,6 +116,37 @@ describe("PatientInput", () => {
     expect(normalizePatientInput(parsed).no_contact_reason).toBe("");
   });
 
+  it("accepts a patient with no postal code", () => {
+    expect(PatientInput.safeParse({ ...base, postal_code: "" }).success).toBe(true);
+    expect(PatientInput.parse(base).postal_code).toBe("");
+  });
+
+  it("accepts a four digit postal code", () => {
+    const result = PatientInput.safeParse({ ...base, postal_code: "1983" });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects a postal code that is not four digits", () => {
+    for (const postal_code of ["198", "19834", "ABCD"]) {
+      const result = PatientInput.safeParse({ ...base, postal_code });
+      expect(result.success).toBe(false);
+      if (result.success) continue;
+      expect(fieldErrorsFromZod(result.error).postal_code).toBe("Enter a four-digit postal code.");
+    }
+  });
+
+  it("does not let a postal code stand in for the address", () => {
+    // Postal code is not contact detail: it does not satisfy the phone +
+    // address requirement, and it never has to be filled in.
+    const result = PatientInput.safeParse({ ...base, residential_address: "", postal_code: "1983" });
+    expect(result.success).toBe(false);
+  });
+
+  it("trims a postal code before it is stored", () => {
+    const parsed = PatientInput.parse({ ...base, postal_code: " 1983 " });
+    expect(normalizePatientInput(parsed).postal_code).toBe("1983");
+  });
+
   it("requires an issuing country for passports", () => {
     const result = PatientInput.safeParse({
       ...base,
@@ -202,6 +235,7 @@ describe("onboarding step schemas", () => {
       phone: "bad",
       email: "not-an-email",
       residential_address: "x",
+      postal_code: "198",
     });
     expect(result.success).toBe(false);
     if (result.success) return;
@@ -209,5 +243,43 @@ describe("onboarding step schemas", () => {
     expect(fields.phone).toBeTruthy();
     expect(fields.email).toBeTruthy();
     expect(fields.residential_address).toBeTruthy();
+    expect(fields.postal_code).toBe("Enter a four-digit postal code.");
+  });
+
+  it("lets the contact step through with the postal code left blank", () => {
+    const result = ContactDetailsStep.safeParse({
+      phone: base.phone,
+      email: base.email,
+      residential_address: base.residential_address,
+      postal_code: "",
+    });
+    expect(result.success).toBe(true);
+  });
+});
+
+describe("PatientUpdate", () => {
+  const editable = {
+    ...base,
+    file_number: "2014",
+  };
+
+  it("loads and keeps an existing postal code", () => {
+    const result = PatientUpdate.safeParse({ ...editable, postal_code: "1983" });
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    expect(normalizePatientUpdate(result.data).postal_code).toBe("1983");
+  });
+
+  it("lets a postal code be removed", () => {
+    // Blank leaves the form; the RPC stores NULL rather than an empty string.
+    const result = PatientUpdate.safeParse({ ...editable, postal_code: "" });
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    expect(normalizePatientUpdate(result.data).postal_code).toBe("");
+  });
+
+  it("keeps the address independent of the postal code", () => {
+    const result = PatientUpdate.safeParse({ ...editable, postal_code: "", residential_address: "" });
+    expect(result.success).toBe(false);
   });
 });

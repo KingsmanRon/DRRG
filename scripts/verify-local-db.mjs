@@ -182,4 +182,113 @@ assert.deepEqual(
   new Set(["patient_created", "duplicate_reviewed"]),
 );
 
-console.log("Database verification passed: direct inserts denied, exact identities blocked, name, birth date and phone matches reviewed, full patient search paginated, no identity onboarding allowed, and audit events recorded.");
+// --- Postal code separation ------------------------------------------------
+// The register held two files for one household because one address ended in a
+// postal code and the other did not (files 2014 and 1450, "Boitumelo Phale").
+// The code now lives in its own column and the address is compared without it.
+const olderFile = await staff.rpc("onboard_patient", {
+  p_patient: {
+    first_names: "Boitumelo",
+    surname: "Phale",
+    date_of_birth: "1995-09-09",
+    identity_type: "none",
+    identity_number: "",
+    identity_country: "",
+    no_identity_reason_code: "not_brought",
+    phone: "073 111 2222",
+    email: "",
+    residential_address: "1410\nZone 13\nSebokeng",
+    postal_code: "1983",
+  },
+  p_consent: { ...consent, signature_value: "Boitumelo Phale" },
+  p_duplicate_candidate_ids: [],
+  p_duplicate_review_reason: "",
+});
+assert.ifError(olderFile.error);
+
+const stored = await staff
+  .from("patients")
+  .select("residential_address, postal_code")
+  .eq("id", olderFile.data[0].patient_id)
+  .single();
+assert.ifError(stored.error);
+assert.equal(stored.data.postal_code, "1983", "Postal code was not stored in its own column");
+assert.equal(stored.data.residential_address, "1410\nZone 13\nSebokeng", "Address was rewritten");
+
+const badPostalCode = await staff.rpc("update_patient", {
+  p_id: olderFile.data[0].patient_id,
+  p_patient: {
+    file_number: olderFile.data[0].file_number,
+    first_names: "Boitumelo",
+    surname: "Phale",
+    date_of_birth: "1995-09-09",
+    identity_type: "none",
+    identity_number: "",
+    identity_country: "",
+    no_identity_reason_code: "not_brought",
+    phone: "073 111 2222",
+    email: "",
+    residential_address: "1410\nZone 13\nSebokeng",
+    postal_code: "198",
+  },
+});
+assert(badPostalCode.error, "A three digit postal code was accepted");
+assert.equal(badPostalCode.error.code, "23514");
+assert.match(badPostalCode.error.message, /patients_postal_code_check/);
+
+const sameAddressDifferentDay = await staff.rpc("find_possible_duplicates", {
+  p_first_names: "Boitumelo",
+  p_surname: "Phale",
+  p_date_of_birth: "1995-09-10",
+  p_phone: "079 444 5555",
+  p_limit: 10,
+  p_email: "",
+  p_address: "1410 Zone 13 Sebokeng",
+});
+assert.ifError(sameAddressDifferentDay.error);
+assert.equal(sameAddressDifferentDay.data?.length, 1, "The same address with no postal code did not match");
+assert.equal(sameAddressDifferentDay.data[0].match_score, 4, "Name + address should score 4");
+assert.equal(sameAddressDifferentDay.data[0].match_tier, "possible", "Name + address is for a person to review");
+assert.deepEqual(sameAddressDifferentDay.data[0].match_reasons, ["name", "address"]);
+assert.equal(sameAddressDifferentDay.data[0].postal_code, "1983", "The candidate's postal code was not returned for display");
+
+const newerPatient = {
+  first_names: "Boitumelo",
+  surname: "Phale",
+  date_of_birth: "1995-09-10",
+  identity_type: "none",
+  identity_number: "",
+  identity_country: "",
+  no_identity_reason_code: "not_brought",
+  phone: "079 444 5555",
+  email: "",
+  residential_address: "1410 Zone 13 Sebokeng",
+  postal_code: "",
+};
+
+const unreviewedSecondFile = await staff.rpc("onboard_patient", {
+  p_patient: newerPatient,
+  p_consent: { ...consent, signature_value: "Boitumelo Phale" },
+  p_duplicate_candidate_ids: [],
+  p_duplicate_review_reason: "",
+});
+assert(unreviewedSecondFile.error, "The second file was created without reviewing the match");
+assert.match(unreviewedSecondFile.error.message, /soft_duplicate_review_required/);
+
+const reviewedSecondFile = await staff.rpc("onboard_patient", {
+  p_patient: newerPatient,
+  p_consent: { ...consent, signature_value: "Boitumelo Phale" },
+  p_duplicate_candidate_ids: [olderFile.data[0].patient_id],
+  p_duplicate_review_reason: "Reviewed at reception; date of birth differs by one day.",
+});
+assert.ifError(reviewedSecondFile.error);
+
+const blankPostalCode = await staff
+  .from("patients")
+  .select("postal_code")
+  .eq("id", reviewedSecondFile.data[0].patient_id)
+  .single();
+assert.ifError(blankPostalCode.error);
+assert.equal(blankPostalCode.data.postal_code, null, "A blank postal code was stored as an empty string");
+
+console.log("Database verification passed: direct inserts denied, exact identities blocked, name, birth date and phone matches reviewed, full patient search paginated, no identity onboarding allowed, postal codes separated from addresses, and audit events recorded.");

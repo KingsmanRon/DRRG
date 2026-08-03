@@ -25,6 +25,8 @@ type Candidate = {
   date_of_birth: string;
   phone: string | null;
   identity_last4: string | null;
+  residential_address: string | null;
+  postal_code: string | null;
   match_score: number;
   match_tier?: string;
   match_reasons: string[];
@@ -36,6 +38,7 @@ export type FileContext = {
   members: { id: string; first_names: string; surname: string; date_of_birth: string }[];
   phone: string;
   residential_address: string;
+  postal_code: string;
   no_contact_reason: string;
 };
 
@@ -56,6 +59,7 @@ type Draft = {
   phone: string;
   email: string;
   residential_address: string;
+  postal_code: string;
   no_contact_details: boolean;
   no_contact_reason: string;
   signature_value: string;
@@ -81,6 +85,7 @@ function initialDraft(fileContext: FileContext | null): Draft {
     phone: fileContext?.phone ?? "",
     email: "",
     residential_address: fileContext?.residential_address ?? "",
+    postal_code: fileContext?.postal_code ?? "",
     no_contact_details: Boolean(fileContext?.no_contact_reason),
     no_contact_reason: fileContext?.no_contact_reason ?? "",
     signature_value: "",
@@ -122,6 +127,8 @@ export function PatientOnboardingForm({
       delete next[field];
       return next;
     });
+    // Postal code is absent on purpose: it is not part of the duplicate search,
+    // so changing it cannot change the matches already on screen.
     if (["first_names", "surname", "date_of_birth", "identity_type", "identity_number", "identity_country", "phone", "email", "residential_address"].includes(field)) {
       setCandidates([]);
       setDuplicatesReviewed(false);
@@ -167,6 +174,7 @@ export function PatientOnboardingForm({
         phone: draft.phone,
         email: draft.email,
         residential_address: draft.residential_address,
+        postal_code: draft.postal_code,
         no_contact_details: draft.no_contact_details,
         no_contact_reason: draft.no_contact_reason,
       });
@@ -504,6 +512,20 @@ export function PatientOnboardingForm({
                 <p className="fieldHelp">Searchable — patients who give different names at the same address surface together. Address is not a unique identity, so genuinely different people at one address stay as separate files.</p>
                 <FieldError message={errors.residential_address} />
               </div>
+              <div className="formField">
+                <label htmlFor="postal_code">Postal code <span className="muted">(optional)</span></label>
+                <input
+                  id="postal_code"
+                  value={draft.postal_code}
+                  onChange={(event) => update("postal_code", event.target.value.replace(/[^0-9]/g, "").slice(0, 4))}
+                  inputMode="numeric"
+                  autoComplete="postal-code"
+                  maxLength={4}
+                  placeholder="1983"
+                />
+                <p className="fieldHelp">Keep it out of the address box above. Matching compares the address itself, so a file with the code and one without still find each other.</p>
+                <FieldError message={errors.postal_code} />
+              </div>
 
               <label className="checkboxField fullWidth">
                 <input type="checkbox" checked={draft.no_contact_details} onChange={(event) => update("no_contact_details", event.target.checked)} />
@@ -591,7 +613,17 @@ function DuplicateCandidateList({ candidates }: { candidates: Candidate[] }) {
     <ul className="duplicateCandidates">
       {candidates.map((candidate) => (
         <li className="duplicateCandidate" key={candidate.id}>
-          <div><div className="candidateName">{candidate.first_names} {candidate.surname}</div><div className="candidateMeta">{candidate.file_number}</div></div>
+          <div>
+            <div className="candidateName">{candidate.first_names} {candidate.surname}</div>
+            <div className="candidateMeta">{candidate.file_number}</div>
+            {/* The address is often why the match was found, and it cannot be
+                judged without reading it. The postal code follows on its own
+                line — shown for context, never as a matching signal. */}
+            <div className="candidateMeta addressBlock">
+              {candidate.residential_address || "No address on file"}
+              {candidate.postal_code ? `\n${candidate.postal_code}` : ""}
+            </div>
+          </div>
           <div className="candidateMeta">Born {candidate.date_of_birth}</div>
           <div className="candidateMeta">{candidate.phone ?? "No phone on file"}</div>
           <div>

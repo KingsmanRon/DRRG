@@ -58,7 +58,7 @@ export default async function PatientDetailPage({
   const { data, error } = await supabase
     .from("patients")
     .select(
-      "id, file_number, first_names, surname, date_of_birth, identity_type, identity_number, identity_country, no_identity_reason_code, no_identity_note, ask_identity_again, phone, email, residential_address, no_contact_reason, status, merged_into, archived_at",
+      "id, file_number, first_names, surname, date_of_birth, identity_type, identity_number, identity_country, no_identity_reason_code, no_identity_note, ask_identity_again, phone, email, residential_address, postal_code, no_contact_reason, status, merged_into, archived_at",
     )
     .eq("id", id)
     .maybeSingle();
@@ -153,7 +153,18 @@ export default async function PatientDetailPage({
               </div>
               <div>
                 <dt>Address</dt>
-                <dd>{patient.residential_address ?? "Not on file"}</dd>
+                {/* Postal code reads as the last line of the address, the way it
+                    would be written on an envelope. Absent when there is none —
+                    an optional field says nothing by staying quiet. */}
+                <dd className="addressBlock">
+                  {patient.residential_address ?? "Not on file"}
+                  {patient.postal_code && (
+                    <>
+                      {"\n"}
+                      {patient.postal_code}
+                    </>
+                  )}
+                </dd>
               </div>
               {patient.no_contact_reason && (
                 <div>

@@ -1630,6 +1630,12 @@ textarea:focus-visible {
   font-size: 14px;
 }
 
+/* An address is written the way it was captured — line by line, postal code
+   last — rather than run together into one line. */
+.addressBlock {
+  white-space: pre-line;
+}
+
 .auditTrailWrap {
   padding-top: 0;
   margin-top: -8px;

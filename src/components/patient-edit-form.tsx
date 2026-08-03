@@ -30,6 +30,7 @@ export type PatientRecord = {
   phone: string | null;
   email: string | null;
   residential_address: string | null;
+  postal_code: string | null;
   no_contact_reason: string | null;
   status: string;
 };
@@ -53,6 +54,7 @@ type Draft = {
   phone: string;
   email: string;
   residential_address: string;
+  postal_code: string;
   no_contact_details: boolean;
   no_contact_reason: string;
 };
@@ -72,6 +74,7 @@ function toDraft(patient: PatientRecord): Draft {
     phone: patient.phone ?? "",
     email: patient.email ?? "",
     residential_address: patient.residential_address ?? "",
+    postal_code: patient.postal_code ?? "",
     // A stored reason is the DB's marker for "no contact details on file".
     no_contact_details: patient.no_contact_reason != null,
     no_contact_reason: patient.no_contact_reason ?? "",
@@ -130,6 +133,8 @@ export function PatientEditForm({
       phone: draft.phone,
       email: draft.email,
       residential_address: draft.residential_address,
+      // Cleared here, cleared in the database: blank is stored as NULL.
+      postal_code: draft.postal_code,
       no_contact_details: draft.no_contact_details,
       no_contact_reason: draft.no_contact_reason,
     };
@@ -345,6 +350,20 @@ export function PatientEditForm({
               <textarea id="residential_address" value={draft.residential_address} onChange={(event) => update("residential_address", event.target.value)} autoComplete="street-address" />
               <p className="fieldHelp">Searchable — helps find patients who gave different names at the same address.</p>
               <FieldError message={errors.residential_address} />
+            </div>
+            <div className="formField">
+              <label htmlFor="postal_code">Postal code <span className="muted">(optional)</span></label>
+              <input
+                id="postal_code"
+                value={draft.postal_code}
+                onChange={(event) => update("postal_code", event.target.value.replace(/[^0-9]/g, "").slice(0, 4))}
+                inputMode="numeric"
+                autoComplete="postal-code"
+                maxLength={4}
+                placeholder="1983"
+              />
+              <p className="fieldHelp">Kept apart from the address so two files for one household still match.</p>
+              <FieldError message={errors.postal_code} />
             </div>
 
             <label className="checkboxField fullWidth">

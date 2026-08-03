@@ -110,6 +110,13 @@ function mapToPayload(error: PgLikeError, context: MutationContext): Mapped {
         recognised: true,
       };
     }
+    if (text.includes("patients_postal_code_check")) {
+      return {
+        status: 422,
+        body: { error: "Enter a four-digit postal code, or leave it blank." },
+        recognised: true,
+      };
+    }
     if (text.includes("patients_identity_shape_check")) {
       return {
         status: 422,

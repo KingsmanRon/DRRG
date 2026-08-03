@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { isValidPostalCode } from "./address";
 import { isValidSouthAfricanId } from "./sa-id";
 
 export const IdentityType = z.enum([
@@ -54,6 +55,17 @@ const optionalEmail = z.union([
   z.email("Enter a valid email address."),
 ]);
 
+/**
+ * Postal code is optional and stays optional: a patient with no code is a
+ * complete record. Blank passes, so the message can only appear once something
+ * has been typed. Blank is stored as NULL, never as an empty string.
+ */
+const optionalPostalCode = z
+  .string()
+  .trim()
+  .default("")
+  .refine(isValidPostalCode, "Enter a four-digit postal code.");
+
 /** Fields that describe a patient, shared by onboarding and editing. */
 const patientCoreShape = {
   first_names: z.string().trim().min(1, "First names are required.").max(120),
@@ -70,6 +82,9 @@ const patientCoreShape = {
   phone: z.string().trim().max(20).default(""),
   email: optionalEmail,
   residential_address: z.string().trim().max(500).default(""),
+  // Not part of the contact requirement above, and never a duplicate signal —
+  // it is a delivery area shared by thousands of patients.
+  postal_code: optionalPostalCode,
   no_contact_details: z.boolean().default(false),
   no_contact_reason: z.string().trim().max(250).default(""),
 } as const;
@@ -326,6 +341,7 @@ export const ContactDetailsStep = z
     phone: patientCoreShape.phone,
     email: patientCoreShape.email,
     residential_address: patientCoreShape.residential_address,
+    postal_code: patientCoreShape.postal_code,
     no_contact_details: patientCoreShape.no_contact_details,
     no_contact_reason: patientCoreShape.no_contact_reason,
   })
@@ -378,6 +394,7 @@ function normalizeCore<
     phone: string;
     email: string;
     residential_address: string;
+    postal_code: string;
     no_contact_details: boolean;
     no_contact_reason: string;
   },
@@ -403,6 +420,7 @@ function normalizeCore<
     phone: input.phone.trim(),
     email: input.email.trim().toLowerCase(),
     residential_address: input.residential_address.trim(),
+    postal_code: input.postal_code.trim(),
     // The reason column is the DB's signal for "no contact details on file";
     // clear it unless the flag is set so full-contact records store null.
     no_contact_reason: input.no_contact_details ? input.no_contact_reason.trim() : "",

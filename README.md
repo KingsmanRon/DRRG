@@ -69,6 +69,27 @@ The system uses two levels of duplicate protection.
 People sharing a file number are excluded from each other's duplicate checks.
 South African mobile numbers are normalised so local `082...` and international `+27 82...` formats match one another. Names and addresses are compared ignoring case, punctuation and accents.
 
+## Address and postal code
+
+The postal code is captured in its own optional field, not inside the address.
+It is stored in `patients.postal_code` (four digits, or nothing at all) and is
+**never** a duplicate signal — thousands of patients share 1983, so a delivery
+area identifies nobody. It is shown beside the address when a pair is reviewed,
+because seeing that one file carries the code and the other does not is often
+what explains the pair.
+
+Addresses are matched on their content: case, punctuation, accents, line breaks
+and a trailing postal code all fall away, so `1410 Zone 13 Sebokeng 1983`,
+`1410 / Zone13 / Sebokeng` and `1410 Zone 13 Sebokeng` are one address. That is
+what the register was missing — two files for one household stayed apart purely
+because reception had typed the postal code on one of them.
+
+Postal code is optional and stays optional: a patient without one is a complete
+record, and the contact rule (a phone and an address, unless a reason is
+recorded) is unchanged. The migration that introduced the column lifted trailing
+codes out of existing addresses only where it was unambiguous; a number-only
+address such as `17234` is a stand number and was left exactly as it was.
+
 Patient records are never hard deleted (HPCSA requires clinical records to be retained). Merging archives the losing record and keeps it queryable for audit. Staff can also **archive** a single file that was registered in error (with a reason); **doctors** can **restore** manually archived files. Records archived by a merge cannot be restored — open the kept file instead.
 
 **Doctors** can filter the patient list: Active only · Include archived · Archived only. Reception staff always see the active register.
@@ -96,7 +117,10 @@ The app runs end-to-end against a local Supabase stack. Docker Desktop must be r
 8. Run `npm run dev` and sign in at `/login`.
 
 Useful checks: `npm run verify:db` (onboarding/duplicate RPCs), `npm run verify:merge`
-(merge flow), and `npm run test` (unit tests). When hosting on Supabase Cloud later,
-point the same environment variables at the cloud project and apply the migrations there.
+(merge flow), `npm run test` (unit tests) and `npm run test:db` (applies every
+migration to a throwaway database and asserts on the result — including what a
+migration's backfill did to rows seeded before it ran). When hosting on Supabase
+Cloud later, point the same environment variables at the cloud project and apply
+the migrations there.
 
 There is no demo/fake-data mode — all screens use the real database.

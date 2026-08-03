@@ -13,7 +13,7 @@ async function loadFile(fileNumber: string): Promise<FileContext | null> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("patients")
-    .select("id, first_names, surname, date_of_birth, phone, residential_address, no_contact_reason")
+    .select("id, first_names, surname, date_of_birth, phone, residential_address, postal_code, no_contact_reason")
     .eq("file_number", fileNumber)
     .eq("status", "active")
     .order("created_at", { ascending: true });
@@ -33,6 +33,7 @@ async function loadFile(fileNumber: string): Promise<FileContext | null> {
     // deliberately not copied: it identifies an individual, not a household.
     phone: firstOnFile.phone ?? "",
     residential_address: firstOnFile.residential_address ?? "",
+    postal_code: firstOnFile.postal_code ?? "",
     no_contact_reason: firstOnFile.no_contact_reason ?? "",
   };
 }

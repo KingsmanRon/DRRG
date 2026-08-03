@@ -1,5 +1,49 @@
 # Changelog
 
+## 2026-08-03 — Postal code leaves the address, and a missed duplicate surfaces
+
+Two files existed for what looks like one patient — 2014 and 1450, both
+"Boitumelo Phale", same address, dates of birth a day apart — and the register
+never said so. The addresses were identical apart from `1983` on the end of one
+of them, and address matching compared the whole string, so the pair scored 3
+across a single field and stayed below the threshold.
+
+- **Postal code is its own field.** Optional, four digits, blank stored as
+  nothing. It appears below the residential address on the registration and edit
+  forms, and on the patient file as the last line of the address. A patient
+  without one is a complete record — the phone-and-address rule is unchanged.
+- **Existing addresses were split** where doing so was unambiguous: the address
+  must end in a standalone four-digit token, something has to be left behind,
+  and what is left has to contain a letter. Number-only addresses like `17234`
+  are stand numbers and were left untouched, as was anything the rule could not
+  read confidently. Nothing else about an address was rewritten — line breaks,
+  capitalisation and punctuation are as entered.
+- **Addresses now match on their content**: case, punctuation, accents, line
+  breaks and a trailing postal code fall away, so `1410 Zone 13 Sebokeng 1983`
+  and `1410 Zone 13 Sebokeng` are one address, and so are `Zone 13` and
+  `Zone13`. A postal code typed into the address box by habit can no longer hide
+  a match.
+- **A postal code is worth nothing on its own.** Thousands of patients share
+  1983; a delivery area identifies nobody. It is shown beside the address on the
+  duplicate review screen — which file has it and which does not is often the
+  explanation — but it scores zero and never changes a tier. The weights are
+  otherwise untouched: name 3, date of birth 3, email 2, phone 1, address 1.
+- **Households are unaffected.** People on one file still never flag each other,
+  and relatives sharing an address and a phone are still only ever "possible".
+- **Fixed alongside:** a pair involving a patient with no phone (or no address)
+  could never reach the "possible" tier. Both fields became optional in July and
+  the comparison was left returning NULL rather than false, which made the
+  "two matching fields" test unknown. Every comparison is now explicit.
+- **Files 2014 and 1450 are a decision for staff, not for the software.**
+  Nothing was merged and no date of birth was corrected. The pair is queued for
+  review by a documented post-deployment script
+  (`supabase/post-deploy/20260803_flag_boitumelo_phale_review.sql`), which
+  refuses to run unless both files are active and the database still considers
+  them a match.
+- **`npm run test:db`** applies every migration to a throwaway database and
+  asserts on the result — including what this migration's backfill did to rows
+  seeded before it ran, which is the one thing an API-level check can never see.
+
 ## 2026-07-30 — Coded identity reason, and drift made visible
 
 Patients recorded as **No identity document** could not be saved. The database

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Fragment, useEffect, useRef, useState } from "react";
-import { matchBanner, type DuplicateTier } from "@/lib/patients/duplicate-score";
+import { addressMatchKey, matchBanner, type DuplicateTier } from "@/lib/patients/duplicate-score";
 import { WarningIcon } from "./icons";
 
 type Side = {
@@ -17,6 +17,7 @@ type Side = {
   phone: string;
   email: string | null;
   residential_address: string;
+  postal_code: string | null;
   status: string;
 };
 
@@ -46,6 +47,17 @@ type RowState = "match" | "differ" | "missing";
 function rowState(a: string, b: string): RowState {
   if (a.trim() === "" || b.trim() === "") return "missing";
   return eq(a, b) ? "match" : "differ";
+}
+
+/**
+ * Addresses are judged the way the matcher judges them — line breaks, spacing
+ * and a postal code still sitting in the address box do not make two records
+ * different places. Both files keep showing their own text, so the difference
+ * stays on screen; only the verdict is shared with the score.
+ */
+function addressRowState(a: string, b: string): RowState {
+  if (a.trim() === "" || b.trim() === "") return "missing";
+  return addressMatchKey(a) === addressMatchKey(b) ? "match" : "differ";
 }
 
 // Match/differ state is announced in text as well as colour (screen readers,
@@ -98,8 +110,14 @@ function planMerge(survivor: Side, source: Side, identityMatch: boolean): MergeP
   if (!eq(survivor.phone, source.phone)) {
     conflicts.push({ field: "Phone", kept: survivor.phone, discarded: source.phone });
   }
-  if (!eq(survivor.residential_address, source.residential_address)) {
+  if (addressMatchKey(survivor.residential_address) !== addressMatchKey(source.residential_address)) {
     conflicts.push({ field: "Address", kept: survivor.residential_address, discarded: source.residential_address });
+  }
+  // The postal code follows the same rule as email: an empty survivor field is
+  // filled from the source rather than lost.
+  if (!survivor.postal_code && source.postal_code) copies.push(`postal code (${source.postal_code})`);
+  else if (survivor.postal_code && source.postal_code && survivor.postal_code !== source.postal_code) {
+    conflicts.push({ field: "Postal code", kept: survivor.postal_code, discarded: source.postal_code });
   }
 
   return { survivor, source, copies, conflicts };
@@ -256,8 +274,20 @@ export function DuplicateResolver({
             },
             { label: "Phone", a: a.phone, b: b.phone, state: rowState(a.phone, b.phone) },
             { label: "Email", a: a.email ?? "", b: b.email ?? "", state: rowState(a.email ?? "", b.email ?? "") },
-            { label: "Address", a: a.residential_address, b: b.residential_address, state: rowState(a.residential_address, b.residential_address) },
+            { label: "Address", a: a.residential_address, b: b.residential_address, state: addressRowState(a.residential_address, b.residential_address) },
           ];
+          // Shown only when at least one file has a code: an empty row on every
+          // pair would be noise. It is never a matching signal — a postal code
+          // covers a whole delivery area — but seeing that one file has 1983
+          // and the other has none is what explains the pair.
+          if (a.postal_code || b.postal_code) {
+            rows.push({
+              label: "Postal code",
+              a: a.postal_code ?? "",
+              b: b.postal_code ?? "",
+              state: rowState(a.postal_code ?? "", b.postal_code ?? ""),
+            });
+          }
 
           return (
             <section

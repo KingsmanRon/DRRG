@@ -72,6 +72,7 @@ export type Database = {
           phone_normalized: string | null;
           email: string | null;
           residential_address: string | null;
+          postal_code: string | null;
           no_contact_reason: string | null;
           status: PatientStatus;
           archived_at: string | null;
@@ -97,6 +98,7 @@ export type Database = {
           phone?: string | null;
           email?: string | null;
           residential_address?: string | null;
+          postal_code?: string | null;
           no_contact_reason?: string | null;
           status?: PatientStatus;
           archived_at?: string | null;
@@ -122,6 +124,7 @@ export type Database = {
           phone?: string | null;
           email?: string | null;
           residential_address?: string | null;
+          postal_code?: string | null;
           no_contact_reason?: string | null;
           status?: PatientStatus;
           archived_at?: string | null;
@@ -237,6 +240,9 @@ export type Database = {
           identity_type: PatientIdentityType;
           identity_last4: string | null;
           status: PatientStatus;
+          residential_address: string | null;
+          // Shown beside the address on a possible match. Never scored.
+          postal_code: string | null;
           match_score: number;
           match_tier: string;
           match_reasons: string[];

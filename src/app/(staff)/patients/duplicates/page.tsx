@@ -19,6 +19,7 @@ function asSide(value: Json): DuplicateReview["patient"] {
     phone: String(row.phone ?? ""),
     email: row.email == null ? null : String(row.email),
     residential_address: String(row.residential_address ?? ""),
+    postal_code: row.postal_code == null ? null : String(row.postal_code),
     status: String(row.status ?? "active"),
   };
 }
