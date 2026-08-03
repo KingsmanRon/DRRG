@@ -191,11 +191,19 @@ is queued once, by hand:
 
    Expected: `possible`, `4`, `{name,address}`.
 
-2. Set `:reviewer_email` in
+2. Set `v_reviewer_email` on the first line of the block in
    `supabase/post-deploy/20260803_flag_boitumelo_phale_review.sql` to the staff
-   account doing the review, and run the file. It refuses to do anything unless
-   both files are active, the account is active staff, and the pair still
-   matches; running it twice queues nothing twice.
+   account doing the review, and run the whole file — SQL editor or psql, it
+   uses no psql meta-commands. It refuses to do anything unless both files are
+   active, the account is active staff, and the pair still matches; running it
+   twice queues nothing twice.
+
+   **Possible duplicates lists pairs that are recorded, not a live scan.** A
+   pair is written to `duplicate_reviews` when someone registers or edits a
+   patient and the matcher finds it; nothing rescans the register afterwards.
+   `private.duplicate_match` scoring a pair at 4 does not put it on the page —
+   this script is what does. The same is true of any other pair the old address
+   comparison missed: it surfaces the next time either file is edited.
 
 3. Open **Possible duplicates** in the app. The pair is a decision for staff:
    whether it is one person, whether the date of birth is 9 or 10 September

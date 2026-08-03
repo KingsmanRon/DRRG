@@ -1,10 +1,14 @@
 -- Post-deployment data operation, run once, by hand, after
 -- 20260803120000_postal_code_separation.sql is live.
 --
--- Purpose: put files 2014 and 1450 ("Boitumelo Phale") in front of staff. From
--- now on the matcher finds this pair by itself, but only at the moment a record
--- is registered or edited — nothing rescans the register — so the pair that
--- prompted this change has to be queued explicitly.
+-- Purpose: put files 2014 and 1450 ("Boitumelo Phale") in front of staff.
+--
+-- Why it is needed at all: Possible duplicates lists pairs *recorded* in
+-- public.duplicate_reviews. A pair is recorded when someone registers or edits
+-- a patient and the matcher finds it — nothing rescans the register, so a pair
+-- that was missed while it was being created stays missed until someone touches
+-- one of the files. private.duplicate_match scoring the pair at 4 does not put
+-- it in the queue; this does.
 --
 -- This is a *review*, not a merge. Nothing is combined, nothing is archived,
 -- and no date of birth is corrected. Staff open Possible duplicates and decide:
@@ -19,39 +23,39 @@
 -- is the practice's call, and merging is done through the app so it is audited.
 --
 -- Why this is not in a migration: reviewed_by must be a real staff member, and
--- staff user ids differ per environment. Set the email below to the account
--- doing the review, then run the whole file:
+-- staff user ids differ per environment. Set the email on the first line of the
+-- block below to the account doing the review, then run the whole file — in the
+-- Supabase SQL editor, or:
 --
 --   psql "$DATABASE_URL" -v ON_ERROR_STOP=1 \
 --     -f supabase/post-deploy/20260803_flag_boitumelo_phale_review.sql
 --
--- Re-running it is safe: it inserts nothing if the pair is already queued or
--- has already been resolved.
-
-\set reviewer_email 'CHANGE-ME@drrg.co.za'
-
--- psql does not substitute variables inside a dollar-quoted body, so the email
--- is handed to the block through a session setting.
-select set_config('drrg.reviewer_email', :'reviewer_email', false);
+-- (No psql meta-commands are used, so the same file works in both.)
+--
+-- Re-running it is safe: it queues nothing twice, and it will not re-open a
+-- pair that has already been merged.
 
 do $$
 declare
-  v_reviewer_email text := btrim(current_setting('drrg.reviewer_email', true));
+  -- ⇩ the staff or doctor account doing the review
+  v_reviewer_email text := 'CHANGE-ME@drrg.co.za';
+
   v_reviewer uuid;
   v_older uuid;
   v_newer uuid;
   v_tier text;
   v_score integer;
+  v_dismissed boolean;
 begin
   select u.id into v_reviewer
   from auth.users u
   join public.profiles p on p.user_id = u.id
-  where lower(u.email) = lower(v_reviewer_email)
+  where lower(u.email) = lower(btrim(v_reviewer_email))
     and p.active
     and p.role in ('doctor', 'staff');
 
   if v_reviewer is null then
-    raise exception 'No active staff account for "%". Set :reviewer_email to a real reviewer.', v_reviewer_email;
+    raise exception 'No active staff account for "%". Set v_reviewer_email to a real reviewer.', v_reviewer_email;
   end if;
 
   select id into v_older from public.patients
@@ -80,19 +84,45 @@ begin
 
   if exists (
     select 1 from public.duplicate_reviews dr
-    where (dr.patient_id = v_newer and dr.candidate_patient_id = v_older)
-       or (dr.patient_id = v_older and dr.candidate_patient_id = v_newer)
+    where dr.status = 'flagged'
+      and ((dr.patient_id = v_newer and dr.candidate_patient_id = v_older)
+        or (dr.patient_id = v_older and dr.candidate_patient_id = v_newer))
   ) then
-    raise notice 'This pair already has a review row; nothing to do.';
+    raise notice 'This pair is already waiting on Possible duplicates; nothing to do.';
     return;
   end if;
+
+  if exists (
+    select 1 from public.duplicate_reviews dr
+    where dr.status = 'merged'
+      and ((dr.patient_id = v_newer and dr.candidate_patient_id = v_older)
+        or (dr.patient_id = v_older and dr.candidate_patient_id = v_newer))
+  ) then
+    raise notice 'These files have already been merged; nothing to do.';
+    return;
+  end if;
+
+  -- A "keep both" decision made before this change was made without the
+  -- address evidence — the addresses did not compare equal then. Re-open it the
+  -- way an edit would: a new flagged row that says why, leaving the original
+  -- decision in place as history.
+  select exists (
+    select 1 from public.duplicate_reviews dr
+    where dr.status = 'not_duplicate'
+      and ((dr.patient_id = v_newer and dr.candidate_patient_id = v_older)
+        or (dr.patient_id = v_older and dr.candidate_patient_id = v_newer))
+  ) into v_dismissed;
 
   insert into public.duplicate_reviews (patient_id, candidate_patient_id, review_reason, reviewed_by)
   values (
     v_newer,
     v_older,
-    'Flagged for review after postal code separation: same name and address, '
-    || 'dates of birth one day apart. Confirm whether these are one person.',
+    case when v_dismissed
+      then 'Re-opened after postal code separation: these addresses now compare as '
+        || 'the same place, which was not visible when the pair was kept as two files.'
+      else 'Flagged for review after postal code separation: same name and address, '
+        || 'dates of birth one day apart. Confirm whether these are one person.'
+    end,
     v_reviewer
   );
 
@@ -105,7 +135,8 @@ begin
       'candidate_patient_ids', array[v_older],
       'reason', 'Queued by post-deploy script 20260803_flag_boitumelo_phale_review.sql',
       'match_tier', v_tier,
-      'match_score', v_score
+      'match_score', v_score,
+      're_opened_after_keep_both', v_dismissed
     )
   );
 
