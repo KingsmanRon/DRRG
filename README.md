@@ -2,6 +2,11 @@
 
 An internal patient onboarding and register application for Dr Refiloe G's cash patients.
 
+How the system is put together — trust boundaries, data model, RPC surface,
+schema-change process — is in **[docs/architecture.md](docs/architecture.md)**.
+Deployment lives in [DEPLOY.md](DEPLOY.md), the interface specification in
+[docs/design](docs/design/README.md).
+
 ## Scope
 
 1. Authenticated doctor and staff access.
