@@ -32,7 +32,38 @@ There is no clinical, billing or medical-aid data in this system, by design.
 
 No ORM, no separate API service, no client-side data store. Node ≥ 20.9.
 
-## 3. Runtime topology
+## 3. Repository map
+
+```text
+src/
+  proxy.ts              Session refresh + HTML route gate (Next 16 proxy)
+  app/
+    page.tsx            Redirects to /patients
+    login/              Sign-in screen
+    (staff)/            Authenticated shell: register, new patient, patient file, duplicates
+    api/                The only write path — one route handler per RPC
+    layout.tsx          Root layout; globals.css holds the whole design system
+  components/           Client components: wizard, edit form, table, duplicate resolver, search
+  lib/
+    auth/session.ts     requireStaffPage / requireStaffApi
+    supabase/           Server + browser clients, hand-maintained Database types
+    patients/           Domain rules mirrored from SQL (schema, duplicate-score, address, phone, sa-id, audit)
+    api/errors.ts       Postgres error code → HTTP response mapping
+    consent.ts          Consent text, version and hash
+supabase/
+  migrations/           Forward-only schema history — the source of truth for behaviour
+  post-deploy/          Documented one-off data operations that need a real staff actor
+scripts/
+  db-test/              Migration-level SQL test runner (+ Supabase shim, fixtures)
+  verify-*.mjs          Integration checks against a running local stack
+  seed-*.mjs            Local staff and sample patients
+  migration-ledger.mjs  Prints the one-time migration-history repair command
+docs/
+  architecture.md       This file
+  design/               Interface specification and fidelity ledger
+```
+
+## 4. Runtime topology
 
 ```mermaid
 flowchart LR
@@ -51,18 +82,30 @@ The Next.js server is the only thing that reads or writes patient data. The
 browser holds a Supabase session cookie but never queries patient tables with
 it — the one exception is `signOut()` in `sign-out-button.tsx`.
 
-## 4. Request paths
+## 5. Screens
 
-**Reads** — server components call the database directly and render HTML:
+| Route | Renders | Reads | Writes via |
+| --- | --- | --- | --- |
+| `/` | Redirect to `/patients` | — | — |
+| `/login` | `LoginForm` | — | `POST /api/auth/login` |
+| `/patients` | `PatientSearch`, `PatientTable` | `search_patients` | — |
+| `/patients/new` | `PatientOnboardingForm` (4-step wizard) | `patients` (household prefill when `?file=`) | `POST /api/patients/duplicates`, `POST /api/patients` |
+| `/patients/[id]` | `PatientDetailTabs` → `PatientEditForm` + `PatientAuditTrail` | `patients`, household members, flagged pairs, `audit_events` (doctor) | `PATCH /api/patients/[id]`, archive, restore |
+| `/patients/duplicates` | `DuplicateResolver` | `list_duplicate_reviews` | resolve, merge |
 
-- `patients/page.tsx` → `search_patients()` (one RPC returns the page, the total
-  and each row's duplicate tier)
-- `patients/[id]/page.tsx` → `.from("patients").select(...)` plus household
-  members, flagged pairs and (for doctors) `audit_events`
-- `patients/duplicates/page.tsx` → `list_duplicate_reviews()`
+Two details that look odd but are deliberate:
 
-**Writes** — a client component posts JSON to a route handler under
-`src/app/api/`, which validates it and calls one RPC:
+- **Search and list state live in the URL** (`?q=`, `?sort=`, `?scope=`), so every
+  view is server-rendered and shareable, and the browser holds no list state.
+- **Page size is a cookie.** Pagination is SQL `LIMIT/OFFSET`, so the size must
+  be known server-side *before* the query. `ResponsivePageSize` detects a coarse
+  pointer (tablet → 10 rows, mouse → 15) and writes a cookie the server reads.
+
+## 6. Request paths
+
+**Reads** — server components query the database directly and render HTML.
+**Writes** — a client component posts JSON to a route handler, which validates it
+and calls exactly one RPC:
 
 ```mermaid
 sequenceDiagram
@@ -78,15 +121,13 @@ sequenceDiagram
   R-->>F: 201, or a mapped error (409 / 422 / 500)
 ```
 
-Every mutation follows this shape:
-
 | Route | RPC | Notes |
 | --- | --- | --- |
 | `POST /api/patients` | `onboard_patient` | Also re-checks the consent version/hash against `src/lib/consent.ts` |
 | `PATCH /api/patients/[id]` | `update_patient` | |
-| `POST /api/patients/[id]/archive` | `archive_patient` | Reason required |
+| `POST /api/patients/[id]/archive` | `archive_patient` | Reason of 5–500 characters required |
 | `POST /api/patients/[id]/restore` | `restore_patient` | Doctors only, and never for a merged record |
-| `POST /api/patients/duplicates` | `find_possible_duplicates` | Read-only; also does the hard identity check |
+| `POST /api/patients/duplicates` | `find_possible_duplicates` | Read-only; also does the hard identity check (409) |
 | `POST /api/patients/duplicates/resolve` | `resolve_duplicate` | "Keep both" |
 | `POST /api/patients/duplicates/merge` | `merge_patients` | |
 | `POST /api/auth/login` | — | Signs in; resolves a practice number to an email server-side |
@@ -117,7 +158,7 @@ The whole callable surface, and nothing else, is:
 `duplicate_match`, `patient_match_fingerprint`, `pair_match_fingerprint` — and
 is not reachable through the API.
 
-## 5. Four gates, in order
+## 7. Four gates, in order
 
 Defence in depth: each gate assumes the ones before it may be bypassed.
 
@@ -146,7 +187,7 @@ Defence in depth: each gate assumes the ones before it may be bypassed.
 Every function in both schemas is `set search_path = ''` and fully qualifies its
 references. `private` is not exposed to PostgREST.
 
-## 6. Where the rules live
+## 8. Where the rules live
 
 **Postgres is authoritative.** The database is the last thing standing between a
 mistake and the register, so every rule that matters is a constraint or a check
@@ -165,7 +206,7 @@ if one drifts, the database wins and the UI is wrong:
 Each mirror has unit tests stating the shared contract; the SQL side is asserted
 separately in `scripts/db-test/tests/`.
 
-## 7. Data model
+## 9. Data model
 
 ```mermaid
 erDiagram
@@ -208,7 +249,36 @@ Invariants worth knowing before changing anything:
   `082…` and `+27 82…` are one number everywhere, including in indexes.
 - **`postal_code`** is optional, four digits, and never a matching signal.
 
-## 8. Duplicate detection
+## 10. Record lifecycles
+
+A patient record — note that only a *manual* archive is reversible, and only by
+a doctor:
+
+```mermaid
+stateDiagram-v2
+  [*] --> active : onboard_patient
+  active --> archived : archive_patient (reason recorded)
+  archived --> active : restore_patient (doctor only)
+  active --> merged : merge_patients (losing record)
+  merged --> [*] : read only, merged_into set
+```
+
+A duplicate pair:
+
+```mermaid
+stateDiagram-v2
+  [*] --> flagged : onboard_patient with reviewed candidates
+  flagged --> not_duplicate : resolve_duplicate (keep both, fingerprint stored)
+  not_duplicate --> flagged : update_patient, matched fields changed
+  flagged --> merged : merge_patients
+  merged --> [*]
+```
+
+`patient_consents` and `audit_events` are append-only and follow the record they
+were written against, including through a merge — the archived row keeps its own
+consent and its own history so the audit trail stays truthful.
+
+## 11. Duplicate detection
 
 Three entry points onto one scoring model (name 3, date of birth 3, email 2,
 phone 1, address 1; *likely* = identity match, name + date of birth, or ≥ 6;
@@ -227,6 +297,20 @@ page until either file is touched again — which is why a change to the matchin
 rules needs a deliberate post-deployment step for pairs already on file (see
 `supabase/post-deploy/`).
 
+How the onboarding wizard uses it:
+
+1. **Personal details** → 2. **Identity** → 3. **Contact** → 4. **Consent**.
+2. Leaving step 2 runs the check: an identity-document match is a hard stop
+   (409, "open the existing patient instead"); softer matches come back as
+   scored candidates.
+3. Leaving step 3 runs it again — phone, email and address all move the score.
+4. Editing any matched field clears the candidate list and the "reviewed" tick,
+   so a review always describes what is actually on screen.
+5. At step 4, candidates force an explicit confirmation plus a written reason
+   (≥ 5 characters). `onboard_patient` re-runs the search server-side and
+   refuses on `soft_duplicate_review_required` (a match was not reviewed) or
+   `soft_duplicate_review_mismatch` (the submitted set is not the current one).
+
 Supporting decisions:
 
 - Addresses are compared on `private.address_match_key`: content only, with
@@ -242,7 +326,7 @@ Supporting decisions:
   pair still matches — so a dismissal survives unrelated edits.
 - Nothing merges automatically. Merging is always a staff action through the UI.
 
-## 9. Authentication and roles
+## 12. Authentication and roles
 
 Supabase Auth issues the session; `profiles` decides what it is worth. Sign-in
 accepts an email **or** a practice number — the number is resolved to an email
@@ -261,7 +345,7 @@ generic message.
 Role checks live in the database (`private.is_active_doctor()` inside
 `restore_patient`, `search_patients` and the RLS policies), not only in the UI.
 
-## 10. Configuration
+## 13. Configuration
 
 | Variable | Where | Purpose |
 | --- | --- | --- |
@@ -274,7 +358,7 @@ The secret key must never appear in a `NEXT_PUBLIC_*` variable. Local
 development runs the whole stack through `npx supabase start` against the same
 migrations as production.
 
-## 11. Changing the schema
+## 14. Changing the schema
 
 Forward-only, one numbered file per change in `supabase/migrations/`
 (`YYYYMMDDHHMMSS_name.sql`), applied in filename order with `supabase db push`.
@@ -295,12 +379,12 @@ Forward-only, one numbered file per change in `supabase/migrations/`
   `supabase/post-deploy/` as documented, re-runnable scripts rather than silent
   production edits.
 
-## 12. Testing
+## 15. Testing
 
 | Layer | Command | Catches | Cannot catch |
 | --- | --- | --- | --- |
 | Unit + component | `npm test` | Validation rules, scoring contract, address rules, rendered markup | Anything the database actually enforces |
-| Database | `npm run test:db` | Constraints, RPC behaviour, RLS-independent SQL logic, and what a migration's **backfill** did to rows seeded before it ran | Auth, PostgREST, the browser |
+| Database | `npm run test:db` | Constraints, RPC behaviour, SQL logic, and what a migration's **backfill** did to rows seeded before it ran | Auth, PostgREST, the browser |
 | Integration | `npm run verify:db`, `npm run verify:merge` | The real stack end to end: RLS, PostgREST, RPC errors, merge and re-flag flows | Migration-time data changes (it connects afterwards) |
 
 `scripts/db-test/` applies every migration to a throwaway database. Supabase
@@ -309,7 +393,52 @@ API roles, the `extensions` schema) are provided by `shim.sql`, which is never
 deployed. `before/<migration>.sql` seeds rows immediately before a given
 migration runs — the only moment a backfill's "before" state exists.
 
-## 13. Deliberate non-goals
+## 16. Performance
+
+Indexes on `patients`, which is the only table with a real access pattern today:
+
+| Index | Serves |
+| --- | --- |
+| `patients_active_dob_idx`, `patients_active_phone_idx`, `patients_active_email_idx`, `patients_active_name_idx` | Duplicate prefiltering on active rows (partial indexes) |
+| `patients_name_dob_idx` | Name + date-of-birth lookups |
+| `patients_phone_idx` | Phone lookups regardless of status (predates the partial index above) |
+| `patients_file_number_idx` | File lookups and household membership |
+| `patients_unique_identity_idx` | The hard identity block |
+| `patients_recent_idx` | Default register ordering (newest first) |
+| `patients_merged_into_idx`, `patients_ask_identity_again_idx`, `patients_no_identity_reason_code_idx` | Partial indexes for merged records and identity follow-ups |
+
+Hot paths worth knowing:
+
+- `search_patients` runs one correlated subquery per returned row to compute
+  that row's duplicate tier. At 10–15 rows per page that is fine; it is the
+  first thing to watch if the register grows by an order of magnitude.
+- `find_possible_duplicates` scans all active patients per check (see §18).
+- `audit_events` and `duplicate_reviews` carry **only** primary keys, while both
+  are queried by patient — the audit trail per file, and the pair lookups above.
+  `audit_events` grows fastest of all tables and will want an index on
+  `(patient_id, created_at desc)` before it gets large.
+
+## 17. Operations
+
+- **Logging.** Every failed mutation is logged server-side with its Postgres
+  code, the constraint or message, and the HTTP status it was mapped to
+  (`mapPatientMutationError`); unmapped errors are marked as such so they can be
+  found. The login route logs lookup failures without ever echoing them to the
+  client. There is no error-tracking service wired up — logs are whatever the
+  host and the Supabase dashboard keep.
+- **Advisors.** Supabase's security and performance advisors are the standing
+  check after any schema change; the migrations are written to pass them
+  (`search_path` pinned everywhere, RLS on every table, no `security definer`
+  view).
+- **Backups.** Whatever the Supabase project's plan provides. The repo automates
+  none of it. What the design guarantees instead: each migration is applied in a
+  transaction, and no code path deletes a patient record, so recovery from an
+  application mistake is a data question rather than a restore.
+- **Drift.** `supabase migration list --linked` against the ledger is the only
+  way to see repo-versus-database divergence; the app surfaces it indirectly as
+  "the database is out of date" (`PGRST202`).
+
+## 18. Deliberate non-goals
 
 Not oversights:
 
@@ -321,7 +450,7 @@ Not oversights:
 - No offline mode or client-side cache; every screen reads the database.
 - No multi-tenancy — one practice, one project.
 
-## 14. Known limits
+## 19. Known limits
 
 Worth knowing before the register grows:
 
@@ -332,7 +461,8 @@ Worth knowing before the register grows:
   does **not** strip the postal code — so searching an address together with its
   code no longer matches a record whose code has been split out. Postal-code
   search is not implemented.
-- The duplicate queue depends on pairs being recorded (see §8); improving the
+- The duplicate queue depends on pairs being recorded (see §11); improving the
   matcher does not retroactively surface old pairs.
 - `no_identity_reason` (free text) is still written alongside the coded reason
   until the practice has reviewed the backfill. Do not read it in new code.
+- `audit_events` has no index on `patient_id` (see §16).
