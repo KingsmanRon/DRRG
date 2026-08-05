@@ -216,3 +216,57 @@ the split addresses: older app code reads and writes `residential_address` as
 before and simply ignores `postal_code`. Do not re-append the codes to the
 addresses — there is no verified migration for that, and it would undo the
 matching this deployment is for.
+
+## 8. Once, with the household consent migrations (20260805…)
+
+Two migrations, applied **in filename order**. `supabase db push` does this for
+you and is the preferred route; the order below only matters if you are pasting
+into the SQL editor.
+
+1. **`20260805090000_household_consent.sql`** — adds `consent_scope`, the
+   `granted_by_patient_id` / `scope` / `scope_changed_*` columns on
+   `patient_consents`, and rewrites `onboard_patient` so someone joining a file
+   inherits the file's signature instead of being asked for one.
+2. **`20260805090500_archive_patient_ambiguous_column.sql`** — repairs
+   `archive_patient`, which raised `42702 column reference "patient_id" is
+   ambiguous` on every call and so had never worked.
+
+They do not depend on each other, so a failure on the first does not corrupt the
+second. Neither is re-runnable: the first creates a type and adds columns and
+constraints, all of which fail on a second run. **Paste each file whole, once**,
+and wrap it in `begin; … commit;` if your editor does not run scripts in a
+transaction — that way a failure cannot leave one half-applied.
+
+Apply before deploying the app code, as in step 2. The currently deployed app
+keeps working against the new schema: it always sends a consent, which is still
+the path for opening a file.
+
+**Nothing is backfilled, and the check is that nothing changed.** Run this
+before and after; the two results must be identical:
+
+```sql
+select count(*)                                              as consents,
+       count(*) filter (where granted_by_patient_id is null) as signed,
+       count(*) filter (where granted_by_patient_id is not null) as inherited,
+       count(*) filter (where scope = 'household')           as household
+from public.patient_consents;
+```
+
+Before the migration the last three columns do not exist; after it, `signed`
+must equal `consents`, with `inherited` and `household` both `0`. Existing
+per-person signatures are real signatures and are left exactly as they were — a
+file only becomes household scope the first time someone is added to it.
+
+**Then smoke test the two behaviours that changed:**
+
+- Open a patient → **Add a person to this file** → the form is one screen with
+  no consent step. Save someone with an SA ID and confirm the date of birth
+  filled itself in from the number.
+- On that file, check the audit history of the person who *opened* it: it now
+  carries "Consent extended to cover everyone on this file".
+- Archive a test patient with a reason (step 6 already lists this) — before
+  these migrations it failed with a generic "The patient could not be archived."
+
+**Rolling the app back** does not require rolling these back. The added columns
+default to the old behaviour, and older app code sends a consent on every
+registration, which the rewritten `onboard_patient` still accepts.
