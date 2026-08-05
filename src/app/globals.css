@@ -430,6 +430,15 @@ textarea:focus-visible {
   margin-bottom: 0;
 }
 
+/* The four-step form gets its breathing room from the stepper's own margin.
+   A form without one — adding a person to a file — otherwise has its first
+   panel touching the heading. */
+.formTitleRow + .formPanel,
+.formTitleRow + .formErrorBanner,
+.formTitleRow + .duplicatePanel {
+  margin-top: 30px;
+}
+
 .stepper {
   margin: 30px 0;
   display: grid;
@@ -2212,6 +2221,12 @@ textarea:focus-visible {
   .inheritedLine {
     flex-direction: column;
     gap: 2px;
+  }
+
+  /* The label's basis is a width on one line and a *height* once the line
+     stacks, which left a 74px hole under "Contact". */
+  .inheritedLabel {
+    flex-basis: auto;
   }
 }
 
