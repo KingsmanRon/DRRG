@@ -244,13 +244,17 @@ export const PatientInput = z
     // existing number into the form is still a collision, so a mistyped digit
     // cannot attach a patient to a stranger's household.
     join_file: z.boolean().default(false),
-    consent_version: z.string().trim().min(1),
-    consent_text_hash: z.string().regex(/^[a-f0-9]{64}$/),
-    signature_type: z.enum(["typed_name", "drawn_signature"]),
-    signature_value: z.string().trim().min(2, "A signature is required.").max(500),
-    patient_present_attestation: z
-      .boolean()
-      .refine((value) => value === true, "Confirm that the patient is present."),
+    // Consent is only captured when a file is opened. Someone added to an
+    // existing file inherits the signature already on it, so these arrive
+    // empty and `onboard_patient` fills the record from the file instead.
+    // This is not a way to register without consent: join_file only succeeds
+    // against a file that exists, and a file only exists because someone
+    // signed for it.
+    consent_version: z.string().trim().default(""),
+    consent_text_hash: z.string().trim().default(""),
+    signature_type: z.enum(["typed_name", "drawn_signature"]).default("typed_name"),
+    signature_value: z.string().trim().max(500).default(""),
+    patient_present_attestation: z.boolean().default(false),
     duplicate_reviewed: z.boolean().default(false),
     duplicate_candidate_ids: z.array(z.uuid()).max(10).default([]),
     duplicate_review_reason: z.string().trim().max(500).default(""),
@@ -258,6 +262,37 @@ export const PatientInput = z
   .superRefine((value, context) => {
     refinePatientCore(value, context);
     refineContact(value, context);
+
+    if (!value.join_file) {
+      if (value.consent_version.length < 1) {
+        context.addIssue({
+          code: "custom",
+          path: ["consent_version"],
+          message: "Consent is required to register a patient.",
+        });
+      }
+      if (!/^[a-f0-9]{64}$/.test(value.consent_text_hash)) {
+        context.addIssue({
+          code: "custom",
+          path: ["consent_text_hash"],
+          message: "Consent is required to register a patient.",
+        });
+      }
+      if (value.signature_value.length < 2) {
+        context.addIssue({
+          code: "custom",
+          path: ["signature_value"],
+          message: "A signature is required.",
+        });
+      }
+      if (!value.patient_present_attestation) {
+        context.addIssue({
+          code: "custom",
+          path: ["patient_present_attestation"],
+          message: "Confirm that the patient is present.",
+        });
+      }
+    }
 
     if (value.join_file && !value.file_number) {
       context.addIssue({
@@ -347,33 +382,76 @@ export const ContactDetailsStep = z
   })
   .superRefine(refineContact);
 
+type DuplicateReviewCore = {
+  duplicate_candidate_count: number;
+  duplicate_reviewed: boolean;
+  duplicate_review_reason: string;
+};
+
+/** Matches on screen must be confirmed and explained before a save. */
+function refineDuplicateReview(value: DuplicateReviewCore, context: z.RefinementCtx) {
+  if (value.duplicate_candidate_count === 0) return;
+  if (!value.duplicate_reviewed) {
+    context.addIssue({
+      code: "custom",
+      path: ["duplicate_reviewed"],
+      message: "Review the possible matches before saving.",
+    });
+  }
+  if (value.duplicate_review_reason.length < 5) {
+    context.addIssue({
+      code: "custom",
+      path: ["duplicate_review_reason"],
+      message: "Record why this is a different patient.",
+    });
+  }
+}
+
+const duplicateReviewShape = {
+  duplicate_candidate_count: z.number().int().min(0).default(0),
+  duplicate_reviewed: z.boolean().default(false),
+  duplicate_review_reason: z.string().trim().max(500).default(""),
+} as const;
+
 export const ConsentStep = z
   .object({
     signature_value: z.string().trim().min(2, "Enter the patient's full name as signature.").max(500),
     patient_present_attestation: z
       .boolean()
       .refine((value) => value === true, "Confirm that the patient is present."),
-    duplicate_candidate_count: z.number().int().min(0).default(0),
-    duplicate_reviewed: z.boolean().default(false),
-    duplicate_review_reason: z.string().trim().max(500).default(""),
+    ...duplicateReviewShape,
+  })
+  .superRefine(refineDuplicateReview);
+
+/**
+ * Everything asked when adding a person to a file that already exists. It is
+ * one screen rather than four steps: the file number is fixed, the contact
+ * details are the file's, and consent is the file's signature — so the only
+ * questions left are who this person is and how they are identified.
+ */
+export const HouseholdMemberStep = z
+  .object({
+    first_names: patientCoreShape.first_names,
+    surname: patientCoreShape.surname,
+    date_of_birth: patientCoreShape.date_of_birth,
+    identity_type: patientCoreShape.identity_type,
+    identity_number: patientCoreShape.identity_number,
+    identity_country: patientCoreShape.identity_country,
+    no_identity_reason_code: patientCoreShape.no_identity_reason_code,
+    no_identity_note: patientCoreShape.no_identity_note,
+    ask_identity_again: patientCoreShape.ask_identity_again,
+    phone: patientCoreShape.phone,
+    email: patientCoreShape.email,
+    residential_address: patientCoreShape.residential_address,
+    postal_code: patientCoreShape.postal_code,
+    no_contact_details: patientCoreShape.no_contact_details,
+    no_contact_reason: patientCoreShape.no_contact_reason,
+    ...duplicateReviewShape,
   })
   .superRefine((value, context) => {
-    if (value.duplicate_candidate_count > 0) {
-      if (!value.duplicate_reviewed) {
-        context.addIssue({
-          code: "custom",
-          path: ["duplicate_reviewed"],
-          message: "Review the possible matches before saving.",
-        });
-      }
-      if (value.duplicate_review_reason.length < 5) {
-        context.addIssue({
-          code: "custom",
-          path: ["duplicate_review_reason"],
-          message: "Record why this is a different patient.",
-        });
-      }
-    }
+    refinePatientCore(value, context);
+    refineContact(value, context);
+    refineDuplicateReview(value, context);
   });
 
 /** Flatten Zod issues to a single message per field for form UIs (client + server). */

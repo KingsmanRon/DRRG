@@ -13,7 +13,10 @@ export async function POST(request: NextRequest) {
   if (!parsed.success) return validationErrorResponse(parsed.error);
 
   const input = normalizePatientInput(parsed.data);
-  if (input.consent_version !== CONSENT_VERSION || input.consent_text_hash !== CONSENT_TEXT_HASH) {
+  // Someone joining an existing file inherits the consent already signed for
+  // it, so there is nothing to check here — `onboard_patient` copies the
+  // signature off the file and records whose it is.
+  if (!input.join_file && (input.consent_version !== CONSENT_VERSION || input.consent_text_hash !== CONSENT_TEXT_HASH)) {
     return NextResponse.json(
       { error: "The consent text has changed. Reload the form and capture consent again." },
       { status: 422 },
@@ -39,13 +42,15 @@ export async function POST(request: NextRequest) {
       postal_code: input.postal_code,
       no_contact_reason: input.no_contact_reason,
     },
-    p_consent: {
-      consent_version: input.consent_version,
-      consent_text_hash: input.consent_text_hash,
-      signature_type: input.signature_type,
-      signature_value: input.signature_value,
-      patient_present_attestation: input.patient_present_attestation,
-    },
+    p_consent: input.join_file
+      ? null
+      : {
+          consent_version: input.consent_version,
+          consent_text_hash: input.consent_text_hash,
+          signature_type: input.signature_type,
+          signature_value: input.signature_value,
+          patient_present_attestation: input.patient_present_attestation,
+        },
     p_duplicate_candidate_ids: input.duplicate_candidate_ids,
     p_duplicate_review_reason: input.duplicate_review_reason,
     p_join_file: input.join_file,

@@ -1,5 +1,62 @@
 # Changelog
 
+## 2026-08-05 — Adding a person to a file stops being a second registration
+
+Reception's complaint: putting a household of three on one file felt like
+registering three patients. People on one file arrive together and live at the
+same address, so the flow asked for the same phone, the same address and a fresh
+signature two and three times over.
+
+**Adding a person to a file is now one screen with three fields.** It only asks
+what the file cannot answer.
+
+- **Consent is the file's, and inherited honestly.** The person who opens a file
+  signs once. The moment someone is added, that signature is promoted to cover
+  the household, and the new member's consent record names whose signature
+  covers them (`granted_by_patient_id`). No consent step appears on the short
+  form. The alternative — auto-filling the new person's name as their own
+  signature — was rejected: it would write a record saying they signed when they
+  did not, and most people added to a family file are children, who cannot sign
+  for themselves at all. An inherited record claims nothing it should not: the
+  "patient is present" attestation is false on it, and the database now refuses
+  a signed consent that does not attest while allowing an inherited one that
+  does not. The promotion is audited against the signatory
+  (`consent_scope_promoted`); nobody signed twice.
+- **Nothing was backfilled.** Files already carrying one signature per person
+  hold real signatures and keep them. A file promotes itself the first time
+  someone is added to it, and a file nobody joins stays individual.
+- **Contact details are stated, not asked.** One line shows the file's phone,
+  address and postal code. *"This person's contact details are different"* opens
+  the fields for the member who lives elsewhere — hiding them outright would
+  have written a wrong address for that member with no way to correct it in the
+  flow.
+- **The date of birth comes out of the ID number.** "This person has a South
+  African ID" is ticked by default; the ID is validated as before and the date
+  of birth read from its first six digits. An ID does not encode the century, so
+  the most recent plausible date is used, shown rather than hidden, and
+  correctable in one click — it is only wrong for patients over about a hundred.
+  An ID whose date never existed asks for the date instead.
+- **Steps 1 and 2 are one step.** Unticking the ID box asks for the date of
+  birth and *one* select that covers both remaining questions: which other
+  document there is, or why there is none. Asking "what kind of document?" and
+  "why is there none?" separately made staff answer the first with the second.
+- **The duplicate gate is unchanged.** With no step boundaries, the search runs
+  when Save is pressed: a match holds the save and demands the same
+  confirmation and written reason, and `onboard_patient` still re-runs the
+  search server-side. Household members still never flag each other, so this
+  rarely interrupts.
+- **The four-step form is untouched** for opening a new file, and still captures
+  the signature that will cover it.
+
+**Fixed alongside: archiving a patient had never worked.** `archive_patient`
+returns a column named `patient_id`, and the statement that clears the duplicate
+queue referred to the table's column of the same name without qualifying it, so
+every call raised `42702 column reference "patient_id" is ambiguous` behind a
+generic "The patient could not be archived." Nothing was ever half-archived —
+the error came before any write. No test had ever called the function; one does
+now. Found while testing that a file whose original signatory is archived can
+still take a new member.
+
 ## 2026-08-03 — Postal code leaves the address, and a missed duplicate surfaces
 
 Two files existed for what looks like one patient — 2014 and 1450, both

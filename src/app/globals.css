@@ -2150,6 +2150,71 @@ textarea:focus-visible {
   font-weight: 600;
 }
 
+/* Adding a person to a file: what the file already answers is stated, not
+   asked again. Only the "different for this person" link makes it a question. */
+
+/* Help text and checkboxes here span the grid, so the fields either side of
+   them stay in reading order. Scoped to this form: the four-step wizard has
+   its own long-standing layout. */
+.memberGrid > .fullWidth {
+  grid-column: 1 / -1;
+}
+
+.inheritedSummary {
+  grid-column: 1 / -1;
+  padding: 15px 17px;
+  display: grid;
+  gap: 8px;
+  background: var(--surface-subtle);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.inheritedLine {
+  margin: 0;
+  display: flex;
+  gap: 12px;
+  align-items: baseline;
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.inheritedLabel {
+  flex: 0 0 74px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.linkButton {
+  padding: 0;
+  color: var(--green-dark);
+  background: none;
+  border: 0;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 650;
+  text-align: left;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.linkButton:hover {
+  color: var(--green);
+}
+
+.linkButton.fullWidth {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 640px) {
+  .inheritedLine {
+    flex-direction: column;
+    gap: 2px;
+  }
+}
+
 .successActions {
   margin-top: 12px;
   display: flex;

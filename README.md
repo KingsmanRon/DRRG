@@ -23,14 +23,51 @@ Clinical notes, billing and medical aid workflows are deliberately excluded.
 
 Cash patients are filed by household, so one file number can carry more than one
 person. Each person is still a full patient record with their own identity
-document, own consent and own audit trail — only the **number** is shared, and
-it is not rewritten or suffixed when a household grows.
+document and own audit trail — only the **number** is shared, and it is not
+rewritten or suffixed when a household grows.
 
 Tick **"This file covers more than one person"** when registering, and the form
-reopens on the same file number for the next member once the first is saved,
-carrying the phone and address over (email is not copied — it identifies a
-person, not a household). The same flow is available later from any patient:
-**Add a person to this file**.
+reopens on the same file number for the next member once the first is saved. The
+same flow is available later from any patient: **Add a person to this file**.
+
+### Adding a person is a short form, not a second registration
+
+Opening a file is a four-step registration. Adding someone to a file that
+already exists asks **only who they are** — one screen, three fields for the
+usual case:
+
+1. **First names and surname.**
+2. **"This person has a South African ID"**, ticked by default. Ticked, the ID
+   number is asked for and the **date of birth is read out of it**; unticked,
+   the date of birth is asked for along with one select covering both remaining
+   questions — which other document there is, or why there is none.
+3. **Contact details are the file's** and are shown as a line of text rather
+   than asked again. *"This person's contact details are different"* opens the
+   fields for the household member who lives elsewhere or has their own phone.
+4. **Consent is the file's** (below), so there is no consent step.
+
+The date of birth taken from an ID is shown, not hidden: an ID number does not
+say which century it belongs to, so the most recent plausible date is used and
+can be corrected in one click. That matters only for patients over about a
+hundred.
+
+Possible duplicates still stop the save, and staff still confirm and write a
+reason — but people already on the file never match each other, so a household
+member rarely sees the panel at all.
+
+### Consent covers the file
+
+The person who opens a file signs once. When someone is added to that file, that
+signature is **promoted to cover the household** and the new member's record
+carries a consent that names whose signature it is (`granted_by_patient_id`).
+Nobody's consent is invented: an inherited record does not claim the new person
+signed, and does not claim anyone attested they were present. A file that never
+grows keeps its individual consent, and consents captured one-per-person before
+this change are left exactly as they were.
+
+This is also the more accurate record for who is usually on a family file —
+children cannot sign their own consent, and a guardian's signature is what
+actually covers them.
 
 Because the file number is no longer unique, two rules protect it:
 

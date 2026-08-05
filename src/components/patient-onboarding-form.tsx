@@ -4,6 +4,11 @@ import Link from "next/link";
 import { useState, type FormEvent } from "react";
 import { CONSENT_TEXT, CONSENT_TEXT_HASH, CONSENT_VERSION } from "@/lib/consent";
 import {
+  MATCHED_FIELDS,
+  type Candidate,
+  checkForDuplicates,
+} from "@/lib/patients/duplicate-check";
+import {
   ConsentStep,
   ContactDetailsStep,
   IdentityStep,
@@ -13,34 +18,9 @@ import {
   defaultAskAgain,
   fieldErrorsFromZod,
 } from "@/lib/patients/schema";
-import { WarningIcon } from "./icons";
+import { DuplicatePanel, DuplicateReviewFields } from "./duplicate-candidates";
 
 type IdentityType = "sa_id" | "passport" | "foreign_document" | "none";
-
-type Candidate = {
-  id: string;
-  file_number: string;
-  first_names: string;
-  surname: string;
-  date_of_birth: string;
-  phone: string | null;
-  identity_last4: string | null;
-  residential_address: string | null;
-  postal_code: string | null;
-  match_score: number;
-  match_tier?: string;
-  match_reasons: string[];
-};
-
-/** An existing household file this person is being added to (?file=DRRG…). */
-export type FileContext = {
-  file_number: string;
-  members: { id: string; first_names: string; surname: string; date_of_birth: string }[];
-  phone: string;
-  residential_address: string;
-  postal_code: string;
-  no_contact_reason: string;
-};
 
 type Draft = {
   file_number: string;
@@ -67,9 +47,9 @@ type Draft = {
   duplicate_review_reason: string;
 };
 
-function initialDraft(fileContext: FileContext | null): Draft {
+function initialDraft(): Draft {
   return {
-    file_number: fileContext?.file_number ?? "",
+    file_number: "",
     family_file: false,
     first_names: "",
     surname: "",
@@ -80,22 +60,16 @@ function initialDraft(fileContext: FileContext | null): Draft {
     no_identity_reason_code: "",
     no_identity_note: "",
     ask_identity_again: false,
-    // Shared household contact details carry over; each person can still be
-    // given their own before saving.
-    phone: fileContext?.phone ?? "",
+    phone: "",
     email: "",
-    residential_address: fileContext?.residential_address ?? "",
-    postal_code: fileContext?.postal_code ?? "",
-    no_contact_details: Boolean(fileContext?.no_contact_reason),
-    no_contact_reason: fileContext?.no_contact_reason ?? "",
+    residential_address: "",
+    postal_code: "",
+    no_contact_details: false,
+    no_contact_reason: "",
     signature_value: "",
     patient_present_attestation: false,
     duplicate_review_reason: "",
   };
-}
-
-function memberNames(fileContext: FileContext): string {
-  return fileContext.members.map((member) => `${member.first_names} ${member.surname}`).join(", ");
 }
 
 const steps = ["Personal details", "Identity", "Contact details", "Consent"];
@@ -104,14 +78,14 @@ function FieldError({ message }: { message?: string }) {
   return message ? <p className="fieldError">{message}</p> : null;
 }
 
-export function PatientOnboardingForm({
-  fileContext = null,
-}: {
-  fileContext?: FileContext | null;
-}) {
-  const joiningFile = fileContext !== null;
+/**
+ * Registering a patient onto a new file: four steps, ending in the consent
+ * that will cover this file. Adding someone to a file that already exists is a
+ * different job and a much shorter form — see `AddFileMemberForm`.
+ */
+export function PatientOnboardingForm() {
   const [step, setStep] = useState(1);
-  const [draft, setDraft] = useState<Draft>(() => initialDraft(fileContext));
+  const [draft, setDraft] = useState<Draft>(() => initialDraft());
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [duplicatesReviewed, setDuplicatesReviewed] = useState(false);
@@ -129,7 +103,7 @@ export function PatientOnboardingForm({
     });
     // Postal code is absent on purpose: it is not part of the duplicate search,
     // so changing it cannot change the matches already on screen.
-    if (["first_names", "surname", "date_of_birth", "identity_type", "identity_number", "identity_country", "phone", "email", "residential_address"].includes(field)) {
+    if ((MATCHED_FIELDS as readonly string[]).includes(field)) {
       setCandidates([]);
       setDuplicatesReviewed(false);
     }
@@ -205,39 +179,25 @@ export function PatientOnboardingForm({
     setFormError("");
     try {
       const identity = identityPayload();
-      const response = await fetch("/api/patients/duplicates", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          first_names: draft.first_names,
-          surname: draft.surname,
-          date_of_birth: draft.date_of_birth,
-          identity_type: identity.identity_type,
-          identity_number: identity.identity_number,
-          identity_country: identity.identity_country,
-          phone: draft.phone,
-          email: draft.email,
-          residential_address: draft.residential_address,
-          // People already on this household file are not duplicate candidates
-          // for the person being added to it.
-          file_number: joiningFile ? fileContext.file_number : "",
-          join_file: joiningFile,
-        }),
+      const outcome = await checkForDuplicates({
+        first_names: draft.first_names,
+        surname: draft.surname,
+        date_of_birth: draft.date_of_birth,
+        identity_type: identity.identity_type,
+        identity_number: identity.identity_number,
+        identity_country: identity.identity_country,
+        phone: draft.phone,
+        email: draft.email,
+        residential_address: draft.residential_address,
+        file_number: "",
+        join_file: false,
       });
-      const body = await response.json();
-      if (response.status === 409) {
-        setFormError(`This identity already belongs to patient file ${body.existing.file_number}. Open the existing patient instead.`);
+      if (outcome.status !== "ok") {
+        setFormError(outcome.message);
         return false;
       }
-      if (!response.ok) {
-        setFormError(body.error ?? "Duplicate checking is temporarily unavailable.");
-        return false;
-      }
-      setCandidates(body.candidates ?? []);
+      setCandidates(outcome.candidates);
       return true;
-    } catch {
-      setFormError("Duplicate checking is temporarily unavailable.");
-      return false;
     } finally {
       setCheckingDuplicates(false);
     }
@@ -268,8 +228,8 @@ export function PatientOnboardingForm({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         ...draft,
-        file_number: joiningFile ? fileContext.file_number : draft.file_number.trim(),
-        join_file: joiningFile,
+        file_number: draft.file_number.trim(),
+        join_file: false,
         identity_country: identity.identity_country,
         identity_number: identity.identity_number,
         no_identity_reason_code: identity.no_identity_reason_code,
@@ -308,19 +268,20 @@ export function PatientOnboardingForm({
     // wizard has to come back empty, and a soft navigation can carry the
     // previous person's answers (signature included) into the new form.
     const nextPersonHref = `/patients/new?file=${encodeURIComponent(createdFileNumber)}`;
-    const leadWithNextPerson = joiningFile || draft.family_file;
 
     return (
       <main className="formShell">
         <section className="successPanel">
           <h1>Patient saved</h1>
           <p>
-            {draft.first_names} {draft.surname} is on file <strong>{createdFileNumber}</strong>
-            {joiningFile ? `, with ${memberNames(fileContext)}.` : "."}
+            {draft.first_names} {draft.surname} is on file <strong>{createdFileNumber}</strong>.
           </p>
-          {leadWithNextPerson ? (
+          {draft.family_file ? (
             <>
-              <p>Add the next person on this file, or finish here.</p>
+              <p>
+                Add the next person on this file, or finish here. They will not be asked for
+                consent or contact details again — this file&rsquo;s already cover them.
+              </p>
               <div className="successActions">
                 <a className="button buttonPrimary" href={nextPersonHref}>Add another person to this file</a>
                 <Link className="button buttonSecondary" href="/patients">Done</Link>
@@ -341,7 +302,7 @@ export function PatientOnboardingForm({
     <form onSubmit={submit} noValidate>
       <main className="formShell">
         <div className="formTitleRow">
-          <h1>{joiningFile ? "Add a person to this file" : "New patient"}</h1>
+          <h1>New patient</h1>
           <Link className="button buttonSecondary" href="/patients">Cancel</Link>
         </div>
 
@@ -359,36 +320,22 @@ export function PatientOnboardingForm({
           <section className="formPanel" aria-labelledby="personal-heading">
             <h2 className="formPanelHeader" id="personal-heading">Personal details</h2>
             <div className="formPanelBody formGrid">
-              {joiningFile ? (
-                <div className="formField fullWidth">
-                  <span className="fieldLabel">File number</span>
-                  <p className="lockedField mono">{fileContext.file_number}</p>
-                  <p className="fieldHelp">
-                    Already on this file: {memberNames(fileContext)}. Contact details have been
-                    copied below — change them if this person&rsquo;s are different. They keep their
-                    own identity document, consent and history.
-                  </p>
-                  <FieldError message={errors.file_number} />
-                </div>
-              ) : (
-                <>
-                  <div className="formField fullWidth">
-                    <label htmlFor="file_number">File number</label>
-                    <input id="file_number" value={draft.file_number} onChange={(event) => update("file_number", event.target.value)} autoComplete="off" placeholder="Leave blank to auto-generate" />
-                    <p className="fieldHelp">If the patient already has a clinic file number, enter it here. Otherwise leave blank and one will be assigned. To put someone on a file that already exists, open that file and use &ldquo;Add a person to this file&rdquo;.</p>
-                    <FieldError message={errors.file_number} />
-                  </div>
-                  <label className="checkboxField fullWidth">
-                    <input type="checkbox" checked={draft.family_file} onChange={(event) => update("family_file", event.target.checked)} />
-                    <span>This file covers more than one person (a family or household file).</span>
-                  </label>
-                  {draft.family_file && (
-                    <p className="fieldHelp fullWidth">
-                      Register this person first. Once they are saved the form reopens on the same
-                      file number for the next person, with the contact details carried over.
-                    </p>
-                  )}
-                </>
+              <div className="formField fullWidth">
+                <label htmlFor="file_number">File number</label>
+                <input id="file_number" value={draft.file_number} onChange={(event) => update("file_number", event.target.value)} autoComplete="off" placeholder="Leave blank to auto-generate" />
+                <p className="fieldHelp">If the patient already has a clinic file number, enter it here. Otherwise leave blank and one will be assigned. To put someone on a file that already exists, open that file and use &ldquo;Add a person to this file&rdquo;.</p>
+                <FieldError message={errors.file_number} />
+              </div>
+              <label className="checkboxField fullWidth">
+                <input type="checkbox" checked={draft.family_file} onChange={(event) => update("family_file", event.target.checked)} />
+                <span>This file covers more than one person (a family or household file).</span>
+              </label>
+              {draft.family_file && (
+                <p className="fieldHelp fullWidth">
+                  Register this person first — their consent covers the file. Once they are saved
+                  the form reopens on the same file number for the next person, asking only who
+                  they are.
+                </p>
               )}
               <div className="formField">
                 <label htmlFor="first_names">First names <span className="required">*</span></label>
@@ -545,22 +492,15 @@ export function PatientOnboardingForm({
         {step === 4 && (
           <>
             {candidates.length > 0 && (
-              <section className="duplicatePanel" aria-labelledby="duplicate-review-heading">
-                <div className="duplicatePanelHeader" id="duplicate-review-heading"><WarningIcon />Possible existing patients</div>
-                <DuplicateCandidateList candidates={candidates} />
-                <div className="formPanelBody formGrid">
-                  <label className="checkboxField fullWidth">
-                    <input type="checkbox" checked={duplicatesReviewed} onChange={(event) => setDuplicatesReviewed(event.target.checked)} />
-                    <span>I reviewed these records and confirmed this is a different patient.</span>
-                  </label>
-                  <FieldError message={errors.duplicate_reviewed} />
-                  <div className="formField fullWidth">
-                    <label htmlFor="duplicate_review_reason">Reason for creating a separate patient <span className="required">*</span></label>
-                    <textarea id="duplicate_review_reason" value={draft.duplicate_review_reason} onChange={(event) => update("duplicate_review_reason", event.target.value)} />
-                    <FieldError message={errors.duplicate_review_reason} />
-                  </div>
-                </div>
-              </section>
+              <DuplicatePanel candidates={candidates} heading="Possible existing patients">
+                <DuplicateReviewFields
+                  reviewed={duplicatesReviewed}
+                  onReviewedChange={setDuplicatesReviewed}
+                  reason={draft.duplicate_review_reason}
+                  onReasonChange={(value) => update("duplicate_review_reason", value)}
+                  errors={errors}
+                />
+              </DuplicatePanel>
             )}
 
             <section className="formPanel" aria-labelledby="consent-heading">
@@ -597,45 +537,4 @@ export function PatientOnboardingForm({
       </div>
     </form>
   );
-}
-
-function DuplicatePanel({ candidates }: { candidates: Candidate[] }) {
-  return (
-    <section className="duplicatePanel" aria-labelledby="possible-patients-heading">
-      <div className="duplicatePanelHeader" id="possible-patients-heading"><WarningIcon />Possible existing patients · Review before continuing</div>
-      <DuplicateCandidateList candidates={candidates} />
-    </section>
-  );
-}
-
-function DuplicateCandidateList({ candidates }: { candidates: Candidate[] }) {
-  return (
-    <ul className="duplicateCandidates">
-      {candidates.map((candidate) => (
-        <li className="duplicateCandidate" key={candidate.id}>
-          <div>
-            <div className="candidateName">{candidate.first_names} {candidate.surname}</div>
-            <div className="candidateMeta">{candidate.file_number}</div>
-            {/* The address is often why the match was found, and it cannot be
-                judged without reading it. The postal code follows on its own
-                line — shown for context, never as a matching signal. */}
-            <div className="candidateMeta addressBlock">
-              {candidate.residential_address || "No address on file"}
-              {candidate.postal_code ? `\n${candidate.postal_code}` : ""}
-            </div>
-          </div>
-          <div className="candidateMeta">Born {candidate.date_of_birth}</div>
-          <div className="candidateMeta">{candidate.phone ?? "No phone on file"}</div>
-          <div>
-            <strong>{candidate.match_tier === "likely" ? "Likely duplicate" : "Possible duplicate"}</strong>
-            <div className="candidateMeta">{formatMatchReasons(candidate.match_reasons)}</div>
-          </div>
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-function formatMatchReasons(reasons: string[]): string {
-  return reasons.map((reason) => `same ${reason}`).join(", ");
 }

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { normalisePhone } from "./phone";
 import {
   ContactDetailsStep,
+  HouseholdMemberStep,
   PersonalDetailsStep,
   PatientInput,
   PatientUpdate,
@@ -254,6 +255,98 @@ describe("onboarding step schemas", () => {
       postal_code: "",
     });
     expect(result.success).toBe(true);
+  });
+});
+
+describe("adding a person to a file that already exists", () => {
+  const member = {
+    first_names: "Thabo",
+    surname: "Dlamini",
+    date_of_birth: "2019-07-07",
+    identity_type: "none" as const,
+    identity_number: "",
+    identity_country: "",
+    no_identity_reason_code: "newborn_no_certificate" as const,
+    no_identity_note: "",
+    ask_identity_again: true,
+    phone: "083 400 0001",
+    email: "",
+    residential_address: "12 Zone 3, Sebokeng",
+    postal_code: "",
+    no_contact_details: false,
+    no_contact_reason: "",
+  };
+
+  it("validates identity and contact in one step", () => {
+    expect(HouseholdMemberStep.safeParse(member).success).toBe(true);
+  });
+
+  it("still applies the identity rules of the four-step form", () => {
+    const result = HouseholdMemberStep.safeParse({
+      ...member,
+      identity_type: "sa_id",
+      identity_number: "1234567890123",
+      no_identity_reason_code: "",
+    });
+    expect(result.success).toBe(false);
+    if (result.success) return;
+    expect(fieldErrorsFromZod(result.error).identity_number).toBe(
+      "Enter a valid South African ID number.",
+    );
+  });
+
+  it("still demands a written reason once a match is on screen", () => {
+    const result = HouseholdMemberStep.safeParse({
+      ...member,
+      duplicate_candidate_count: 1,
+      duplicate_reviewed: true,
+      duplicate_review_reason: "",
+    });
+    expect(result.success).toBe(false);
+    if (result.success) return;
+    expect(fieldErrorsFromZod(result.error).duplicate_review_reason).toBeTruthy();
+  });
+
+  it("saves without a consent payload, because the file's consent covers them", () => {
+    const { consent_version, consent_text_hash, signature_value, patient_present_attestation, signature_type, ...withoutConsent } = base;
+    void consent_version;
+    void consent_text_hash;
+    void signature_value;
+    void patient_present_attestation;
+    void signature_type;
+
+    const result = PatientInput.safeParse({
+      ...withoutConsent,
+      file_number: "DRRG00000042",
+      join_file: true,
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("but a brand new file still cannot be opened without one", () => {
+    const { consent_version, consent_text_hash, signature_value, patient_present_attestation, signature_type, ...withoutConsent } = base;
+    void consent_version;
+    void consent_text_hash;
+    void signature_value;
+    void patient_present_attestation;
+    void signature_type;
+
+    const result = PatientInput.safeParse({ ...withoutConsent, join_file: false });
+    expect(result.success).toBe(false);
+    if (result.success) return;
+    const fields = fieldErrorsFromZod(result.error);
+    expect(fields.signature_value).toBe("A signature is required.");
+    expect(fields.patient_present_attestation).toBe("Confirm that the patient is present.");
+    expect(fields.consent_version).toBeTruthy();
+  });
+
+  it("names the file a joining person is being added to", () => {
+    const result = PatientInput.safeParse({ ...base, join_file: true, file_number: "" });
+    expect(result.success).toBe(false);
+    if (result.success) return;
+    expect(fieldErrorsFromZod(result.error).file_number).toBe(
+      "Name the file this person is being added to.",
+    );
   });
 });
 

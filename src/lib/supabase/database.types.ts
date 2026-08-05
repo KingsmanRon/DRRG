@@ -19,6 +19,8 @@ export type NoIdentityReasonCode =
 
 export type PatientStatus = "active" | "archived";
 export type SignatureType = "typed_name" | "drawn_signature";
+/** Whether a consent covers one person or everyone on their file. */
+export type ConsentScope = "individual" | "household";
 export type DuplicateReviewStatus = "flagged" | "not_duplicate" | "merged";
 
 export type Database = {
@@ -175,6 +177,46 @@ export type Database = {
           resolved_at?: string | null;
           resolution_reason?: string | null;
           resolved_fingerprint?: string | null;
+        };
+        Relationships: [];
+      };
+      patient_consents: {
+        Row: {
+          id: string;
+          patient_id: string;
+          consent_version: string;
+          consent_text_hash: string;
+          signature_type: SignatureType;
+          signature_value: string;
+          patient_present_attestation: boolean;
+          scope: ConsentScope;
+          /** Set when this consent is the file's signature, given by someone else. */
+          granted_by_patient_id: string | null;
+          scope_changed_at: string | null;
+          scope_changed_by: string | null;
+          captured_by: string;
+          captured_at: string;
+        };
+        Insert: {
+          id?: string;
+          patient_id: string;
+          consent_version: string;
+          consent_text_hash: string;
+          signature_type: SignatureType;
+          signature_value: string;
+          patient_present_attestation: boolean;
+          scope?: ConsentScope;
+          granted_by_patient_id?: string | null;
+          scope_changed_at?: string | null;
+          scope_changed_by?: string | null;
+          captured_by: string;
+          captured_at?: string;
+        };
+        Update: {
+          scope?: ConsentScope;
+          granted_by_patient_id?: string | null;
+          scope_changed_at?: string | null;
+          scope_changed_by?: string | null;
         };
         Relationships: [];
       };

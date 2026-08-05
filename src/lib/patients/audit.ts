@@ -10,6 +10,7 @@ const ACTION_LABELS: Record<string, string> = {
   patient_deleted: "Patient deleted (legacy)",
   duplicate_reviewed: "Soft duplicate reviewed at registration",
   duplicate_resolved: "Duplicate pair marked as different patients",
+  consent_scope_promoted: "Consent extended to cover everyone on this file",
 };
 
 function asRecord(value: Json | undefined): Record<string, Json | undefined> | null {
@@ -51,6 +52,11 @@ function formatMetadata(action: string, metadata: Json): string {
 
   if (action === "patient_restored") {
     return base;
+  }
+
+  if (action === "consent_scope_promoted") {
+    const file = typeof meta.file_number === "string" ? meta.file_number : null;
+    return file ? `${base} (${file})` : base;
   }
 
   if (action === "duplicate_resolved" && typeof meta.reason === "string") {

@@ -43,7 +43,7 @@ src/
     (staff)/            Authenticated shell: register, new patient, patient file, duplicates
     api/                The only write path — one route handler per RPC
     layout.tsx          Root layout; globals.css holds the whole design system
-  components/           Client components: wizard, edit form, table, duplicate resolver, search
+  components/           Client components: wizard, add-to-file form, edit form, table, duplicate resolver, search
   lib/
     auth/session.ts     requireStaffPage / requireStaffApi
     supabase/           Server + browser clients, hand-maintained Database types
@@ -123,7 +123,7 @@ sequenceDiagram
 
 | Route | RPC | Notes |
 | --- | --- | --- |
-| `POST /api/patients` | `onboard_patient` | Also re-checks the consent version/hash against `src/lib/consent.ts` |
+| `POST /api/patients` | `onboard_patient` | Re-checks the consent version/hash against `src/lib/consent.ts` when a file is being opened. With `join_file`, no consent is sent or checked: the RPC extends the file's own signature (§10) |
 | `PATCH /api/patients/[id]` | `update_patient` | |
 | `POST /api/patients/[id]/archive` | `archive_patient` | Reason of 5–500 characters required |
 | `POST /api/patients/[id]/restore` | `restore_patient` | Doctors only, and never for a merged record |
@@ -222,14 +222,15 @@ erDiagram
 | --- | --- | --- |
 | `profiles` | Staff identity and role | The authorization table. An auth user without a profile row can sign in and do nothing |
 | `patients` | The register | Soft-deleted only. `merged_into` points at the survivor |
-| `patient_consents` | The consent captured at registration | **Unique per patient**; stays with the record it was signed for, even after a merge |
+| `patient_consents` | The consent covering each patient | **Unique per patient**; stays with the record it was written for, even after a merge. `granted_by_patient_id` names the patient whose signature covers this row (null = this row *is* the signature); `scope` is `individual` until someone is added to the file |
 | `duplicate_reviews` | Flagged / resolved pairs | `flagged` → the queue; `not_duplicate` carries a fingerprint; `merged` is terminal |
 | `patient_aliases` | File numbers that used to belong to a merged record | Only created when nobody else still holds the number |
-| `audit_events` | Who did what, per patient | Doctor-readable. Every mutating RPC writes here; the allowed actions are a check constraint (`patient_created`, `patient_updated`, `patient_archived`, `patient_restored`, `patient_deleted`, `duplicate_reviewed`, `duplicate_resolved`, `patient_merged`) |
+| `audit_events` | Who did what, per patient | Doctor-readable. Every mutating RPC writes here; the allowed actions are a check constraint (`patient_created`, `patient_updated`, `patient_archived`, `patient_restored`, `patient_deleted`, `duplicate_reviewed`, `duplicate_resolved`, `patient_merged`, `consent_scope_promoted`) |
 | `patient_deletions` | Log of deletions from before hard delete was removed | Historical; nothing writes to it any more |
 
 Enums: `staff_role`, `patient_identity_type`, `patient_status`,
-`signature_type`, `duplicate_review_status`, `no_identity_reason_code`.
+`signature_type`, `duplicate_review_status`, `no_identity_reason_code`,
+`consent_scope`.
 
 Invariants worth knowing before changing anything:
 
@@ -248,6 +249,11 @@ Invariants worth knowing before changing anything:
 - **`phone_normalized`** is a generated column (`private.normalise_phone`), so
   `082…` and `+27 82…` are one number everywhere, including in indexes.
 - **`postal_code`** is optional, four digits, and never a matching signal.
+- **A consent row is either a signature or an inheritance.**
+  `patient_consents_attestation_check` requires `patient_present_attestation`
+  unless `granted_by_patient_id` is set, so only a row somebody actually signed
+  can claim the patient was present. An inherited row is always `household`
+  scope and can never point at its own patient.
 
 ## 10. Record lifecycles
 
@@ -278,6 +284,24 @@ stateDiagram-v2
 were written against, including through a merge — the archived row keeps its own
 consent and its own history so the audit trail stays truthful.
 
+A consent, once a household forms:
+
+```mermaid
+stateDiagram-v2
+  [*] --> individual : onboard_patient, a file is opened
+  individual --> household : onboard_patient(p_join_file), first person added
+  household --> household : further people added, nothing promoted twice
+```
+
+The promotion is a staff action and is audited as one
+(`consent_scope_promoted` against the signatory) — the person who signed did not
+sign again. The member being added gets their own row carrying that signature,
+`granted_by_patient_id` pointing at its owner, and
+`patient_present_attestation` false, because nobody attested to them. The
+signatory is resolved by `private.file_signed_consent`: the earliest consent on
+the file that is not itself inherited, preferring an active member but falling
+back to an archived one so an archived first member cannot strand the file.
+
 ## 11. Duplicate detection
 
 Three entry points onto one scoring model (name 3, date of birth 3, email 2,
@@ -297,7 +321,7 @@ page until either file is touched again — which is why a change to the matchin
 rules needs a deliberate post-deployment step for pairs already on file (see
 `supabase/post-deploy/`).
 
-How the onboarding wizard uses it:
+How the onboarding wizard uses it (`PatientOnboardingForm`, opening a new file):
 
 1. **Personal details** → 2. **Identity** → 3. **Contact** → 4. **Consent**.
 2. Leaving step 2 runs the check: an identity-document match is a hard stop
@@ -310,6 +334,16 @@ How the onboarding wizard uses it:
    (≥ 5 characters). `onboard_patient` re-runs the search server-side and
    refuses on `soft_duplicate_review_required` (a match was not reviewed) or
    `soft_duplicate_review_mismatch` (the submitted set is not the current one).
+
+Adding a person to a file that already exists is a different component
+(`AddFileMemberForm`, rendered by `/patients/new?file=…`) and a single screen:
+the file number is fixed, the contact details and consent come from the file,
+and the date of birth is derived from the ID number when there is one. There are
+no step boundaries to hang a check on, so the search runs once when **Save** is
+pressed; anything found holds the save and shows the panel, and the second press
+carries the confirmation and reason. Both forms call the same
+`checkForDuplicates`, and the server-side re-check is unchanged, so the gate is
+identical — only its timing differs. Rule 4 above applies here too.
 
 Supporting decisions:
 

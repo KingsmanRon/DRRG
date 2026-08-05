@@ -169,6 +169,20 @@ function mapToPayload(error: PgLikeError, context: MutationContext): Mapped {
     return { status: 404, body: { error: "This patient no longer exists." }, recognised: true };
   }
 
+  // Adding someone to a file works by extending the consent already signed for
+  // it. A file with no signature on record has nothing to extend.
+  if (code === "22023" && text.includes("file_consent_missing")) {
+    return {
+      status: 409,
+      body: {
+        error:
+          "This file has no signed consent on record, so nobody can be added to it. Register this person on their own file instead.",
+        code: "file_consent_missing",
+      },
+      recognised: true,
+    };
+  }
+
   if (code === "22023" && context === "restore") {
     return { status: 409, body: { error: "Only archived records can be restored." }, recognised: true };
   }
